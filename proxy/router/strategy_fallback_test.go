@@ -59,3 +59,49 @@ func TestFallback_returns_chunks_from_first_working_provider(t *testing.T) {
 		t.Fatalf("expected 2 chunks, got %v", contents)
 	}
 }
+
+func TestFallback_forwards_error_after_partial_content(t *testing.T) {
+	// Provider sends one content chunk then an error.
+	// Fallback must forward the error and NOT try the next provider.
+	backup := &provider.MockProvider{MockName: "backup", Chunks: []string{"backup content"}}
+
+	// Create a provider that sends one content chunk then an error chunk.
+	contentThenError := &contentThenErrorProvider{name: "partial"}
+
+	out := router.Fallback(context.Background(), []provider.Provider{contentThenError, backup}, provider.Request{})
+
+	var gotContent bool
+	var gotError bool
+	for c := range out {
+		if !c.Done && c.Err == nil && c.Content != "" {
+			gotContent = true
+		}
+		if c.Err != nil {
+			gotError = true
+			if c.Provider == "backup" {
+				t.Error("fallback should not have tried backup provider after partial content")
+			}
+		}
+	}
+	if !gotContent {
+		t.Error("expected to receive the partial content chunk")
+	}
+	if !gotError {
+		t.Error("expected to receive the error chunk after partial content")
+	}
+	_ = backup
+}
+
+// contentThenErrorProvider sends one content chunk then one error chunk.
+type contentThenErrorProvider struct {
+	name string
+}
+
+func (p *contentThenErrorProvider) Name() string             { return p.name }
+func (p *contentThenErrorProvider) CostPer1kTokens() float64 { return 0.001 }
+func (p *contentThenErrorProvider) Stream(ctx context.Context, req provider.Request, out chan<- provider.Chunk) error {
+	defer close(out)
+	out <- provider.Chunk{Content: "partial", Provider: p.name}
+	out <- provider.Chunk{Err: fmt.Errorf("mid-stream failure"), Provider: p.name}
+	return fmt.Errorf("mid-stream failure")
+}

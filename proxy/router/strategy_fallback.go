@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/domiciano/llm-proxy/provider"
@@ -16,6 +17,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 
 	go func() {
 		defer close(out)
+		var errs []error
 		for _, p := range providers {
 			pCtx, cancel := context.WithCancel(ctx)
 			ch := make(chan provider.Chunk, 64)
@@ -35,6 +37,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 						return
 					}
 					providerFailed = true
+					errs = append(errs, c.Err)
 					cancel()
 					break
 				}
@@ -53,7 +56,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 				continue
 			}
 		}
-		out <- provider.Chunk{Err: fmt.Errorf("all providers failed")}
+		out <- provider.Chunk{Err: fmt.Errorf("all providers failed: %w", errors.Join(errs...))}
 	}()
 
 	return out
