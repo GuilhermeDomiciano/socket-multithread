@@ -58,7 +58,11 @@ func (g *Gemini) Stream(ctx context.Context, req Request, out chan<- Chunk) erro
 		}
 		contents[i] = geminiContent{Parts: []geminiPart{{Text: m.Content}}, Role: role}
 	}
-	body, _ := json.Marshal(geminiReq{Contents: contents})
+	body, err := json.Marshal(geminiReq{Contents: contents})
+	if err != nil {
+		out <- Chunk{Provider: g.Name(), Err: fmt.Errorf("marshal request: %w", err)}
+		return err
+	}
 
 	url := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", g.BaseURL, g.Model, g.APIKey)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))

@@ -50,7 +50,11 @@ func (o *OpenAI) Stream(ctx context.Context, req Request, out chan<- Chunk) erro
 	for i, m := range req.Messages {
 		msgs[i] = oaiMsg{Role: m.Role, Content: m.Content}
 	}
-	body, _ := json.Marshal(openAIReq{Model: o.Model, Messages: msgs, Stream: true, MaxTokens: req.MaxTokens})
+	body, err := json.Marshal(openAIReq{Model: o.Model, Messages: msgs, Stream: true, MaxTokens: req.MaxTokens})
+	if err != nil {
+		out <- Chunk{Provider: o.Name(), Err: fmt.Errorf("marshal request: %w", err)}
+		return err
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, o.BaseURL+"/v1/chat/completions", bytes.NewReader(body))
 	if err != nil {

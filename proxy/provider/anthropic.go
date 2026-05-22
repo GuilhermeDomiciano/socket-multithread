@@ -28,6 +28,7 @@ type anthroReq struct {
 	Messages  []anthroMsg `json:"messages"`
 	MaxTokens int         `json:"max_tokens"`
 	Stream    bool        `json:"stream"`
+	System    string      `json:"system,omitempty"`
 }
 
 type anthroMsg struct {
@@ -50,11 +51,25 @@ func (a *Anthropic) Stream(ctx context.Context, req Request, out chan<- Chunk) e
 	if maxTokens == 0 {
 		maxTokens = 1024
 	}
-	msgs := make([]anthroMsg, len(req.Messages))
-	for i, m := range req.Messages {
-		msgs[i] = anthroMsg{Role: m.Role, Content: m.Content}
+
+	var systemContent string
+	var msgs []anthroMsg
+	for _, m := range req.Messages {
+		if m.Role == "system" {
+			if systemContent != "" {
+				systemContent += "\n"
+			}
+			systemContent += m.Content
+		} else {
+			msgs = append(msgs, anthroMsg{Role: m.Role, Content: m.Content})
+		}
 	}
-	body, _ := json.Marshal(anthroReq{Model: a.Model, Messages: msgs, MaxTokens: maxTokens, Stream: true})
+
+	body, err := json.Marshal(anthroReq{Model: a.Model, Messages: msgs, MaxTokens: maxTokens, Stream: true, System: systemContent})
+	if err != nil {
+		out <- Chunk{Provider: a.Name(), Err: fmt.Errorf("marshal request: %w", err)}
+		return err
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.BaseURL+"/v1/messages", bytes.NewReader(body))
 	if err != nil {
