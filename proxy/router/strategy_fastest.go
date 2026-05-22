@@ -76,6 +76,7 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 				}
 				// This provider wins — cancel all losers.
 				winnerIdx = ic.idx
+				defer cancels[winnerIdx]() // ensure winner's context is released when goroutine exits
 				for i, cancel := range cancels {
 					if i != winnerIdx {
 						cancel()
