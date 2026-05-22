@@ -44,3 +44,22 @@ func TestRouter_returns_error_when_no_providers(t *testing.T) {
 		t.Error("expected error when providers list is empty")
 	}
 }
+
+func TestRouter_empty_strategy_defaults_to_fastest(t *testing.T) {
+	p := &provider.MockProvider{MockName: "p", Chunks: []string{"hi"}}
+	r := &router.Router{Providers: []provider.Provider{p}, Strategy: ""}
+
+	chunks, err := r.Dispatch(context.Background(), provider.Request{})
+	if err != nil {
+		t.Fatalf("unexpected error with empty strategy: %v", err)
+	}
+	var got []string
+	for c := range chunks {
+		if !c.Done && c.Err == nil {
+			got = append(got, c.Content)
+		}
+	}
+	if len(got) == 0 {
+		t.Fatal("expected content from default (fastest) strategy")
+	}
+}

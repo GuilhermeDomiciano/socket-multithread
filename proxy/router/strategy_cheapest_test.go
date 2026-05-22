@@ -29,7 +29,6 @@ func TestCheapest_dispatches_to_lowest_cost_provider(t *testing.T) {
 }
 
 func TestCheapest_falls_back_when_cheapest_fails(t *testing.T) {
-	// Note: add "fmt" to imports — it's needed for fmt.Errorf below.
 	failing := &provider.MockProvider{MockName: "failing", MockCost: 0.01, FailWith: fmt.Errorf("down")}
 	working := &provider.MockProvider{MockName: "working", MockCost: 1.0, Chunks: []string{"ok"}}
 
