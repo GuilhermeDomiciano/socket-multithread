@@ -1,11 +1,13 @@
 package stream_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/domiciano/llm-proxy/provider"
 	"github.com/domiciano/llm-proxy/stream"
@@ -49,5 +51,33 @@ func TestWrite_sends_error_event(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, `"error":"provider down"`) {
 		t.Errorf("missing error event in: %s", body)
+	}
+}
+
+func TestWrite_stops_on_client_disconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Channel that will never send Done — simulates infinite stream
+	chunks := make(chan provider.Chunk, 1)
+	chunks <- provider.Chunk{Content: "first", Provider: "mock"}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/query", nil)
+	r = r.WithContext(ctx)
+
+	done := make(chan struct{})
+	go func() {
+		stream.Write(w, r, chunks)
+		close(done)
+	}()
+
+	// Cancel the context (simulates client disconnect)
+	cancel()
+
+	select {
+	case <-done:
+		// Write returned after context cancel — correct
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Write did not return after context cancellation")
 	}
 }

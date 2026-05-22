@@ -36,7 +36,7 @@ func Write(w http.ResponseWriter, r *http.Request, chunks <-chan provider.Chunk)
 				return
 			}
 			if chunk.Err != nil {
-				data, _ := json.Marshal(payload{Error: chunk.Err.Error()})
+				data, _ := json.Marshal(payload{Error: chunk.Err.Error()}) // payload contains only strings; cannot fail
 				fmt.Fprintf(w, "data: %s\n\n", data)
 				flusher.Flush()
 				return
@@ -46,7 +46,7 @@ func Write(w http.ResponseWriter, r *http.Request, chunks <-chan provider.Chunk)
 				flusher.Flush()
 				return
 			}
-			data, _ := json.Marshal(payload{Content: chunk.Content, Provider: chunk.Provider})
+			data, _ := json.Marshal(payload{Content: chunk.Content, Provider: chunk.Provider}) // payload contains only strings; cannot fail
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
