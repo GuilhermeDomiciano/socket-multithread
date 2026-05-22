@@ -37,7 +37,8 @@ func TestMockProvider_sends_error_chunk(t *testing.T) {
 		FailWith: fmt.Errorf("boom"),
 	}
 	out := make(chan provider.Chunk, 10)
-	go p.Stream(context.Background(), provider.Request{}, out)
+	errCh := make(chan error, 1)
+	go func() { errCh <- p.Stream(context.Background(), provider.Request{}, out) }()
 
 	var chunks []provider.Chunk
 	for c := range out {
@@ -45,6 +46,9 @@ func TestMockProvider_sends_error_chunk(t *testing.T) {
 	}
 	if len(chunks) != 1 || chunks[0].Err == nil {
 		t.Fatalf("expected one error chunk, got %v", chunks)
+	}
+	if err := <-errCh; err == nil {
+		t.Fatal("expected Stream to return non-nil error")
 	}
 }
 

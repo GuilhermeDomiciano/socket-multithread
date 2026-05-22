@@ -13,6 +13,9 @@ type Request struct {
 	Temperature float64
 }
 
+// Chunk represents a streaming response unit from a provider.
+// Contract: Done=true means clean stream end (no error); Err!=nil means failure,
+// and when Err is set, Done should be treated as irrelevant.
 type Chunk struct {
 	Content  string
 	Provider string
