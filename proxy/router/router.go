@@ -35,10 +35,13 @@ func (r *Router) Dispatch(ctx context.Context, req provider.Request, sink event.
 	}
 	switch r.Strategy {
 	case StrategyFastest, "":
+		emit(sink, event.Event{Type: "start", Detail: "fastest"})
 		return Fastest(ctx, r.Providers, req, sink), nil
 	case StrategyCheapest:
+		emit(sink, event.Event{Type: "start", Detail: "cheapest"})
 		return Cheapest(ctx, r.Providers, req, sink), nil
 	case StrategyFallback:
+		emit(sink, event.Event{Type: "start", Detail: "fallback"})
 		return Fallback(ctx, r.Providers, req, sink), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", r.Strategy)

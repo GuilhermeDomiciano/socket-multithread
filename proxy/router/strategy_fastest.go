@@ -17,7 +17,6 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 	go func() {
 		defer close(out)
 
-		// done is closed when the main goroutine exits, unblocking forwarder goroutines.
 		done := make(chan struct{})
 		defer close(done)
 
@@ -36,12 +35,12 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 			cancels[i] = cancel
 			ch := make(chan provider.Chunk, 64)
 
-			// Stream goroutine: drives the provider. Stream closes ch on return.
+			emit(sink, event.Event{Type: "provider_start", Provider: p.Name()})
+
 			go func() {
 				p.Stream(pCtx, req, ch) //nolint:errcheck
 			}()
 
-			// Forwarder goroutine: copies provider chunks into merged.
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -55,7 +54,6 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 			}()
 		}
 
-		// Close merged once all forwarders exit.
 		go func() {
 			wg.Wait()
 			close(merged)
@@ -65,11 +63,14 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 		errCount := 0
 
 		for ic := range merged {
+			pname := providers[ic.idx].Name()
 			if winnerIdx == -1 {
 				if ic.chunk.Err != nil {
 					errCount++
+					emit(sink, event.Event{Type: "failed", Provider: pname, Detail: ic.chunk.Err.Error()})
 					cancels[ic.idx]()
 					if errCount == len(providers) {
+						emit(sink, event.Event{Type: "error", Detail: "all providers failed"})
 						out <- provider.Chunk{Err: fmt.Errorf("all providers failed")}
 						return
 					}
@@ -77,22 +78,33 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 				}
 				// This provider wins — cancel all losers.
 				winnerIdx = ic.idx
-				defer cancels[winnerIdx]() // ensure winner's context is released when goroutine exits
+				emit(sink, event.Event{Type: "won", Provider: pname})
+				defer cancels[winnerIdx]()
 				for i, cancel := range cancels {
 					if i != winnerIdx {
 						cancel()
+						emit(sink, event.Event{Type: "cancelled", Provider: providers[i].Name()})
 					}
 				}
+			}
+			if ic.chunk.Err != nil {
+				// Loser error arriving after the winner was chosen — ignore for output.
+				continue
+			}
+			if !ic.chunk.Done {
+				emit(sink, event.Event{Type: "chunk", Provider: pname, Content: ic.chunk.Content})
 			}
 			if ic.idx == winnerIdx {
 				out <- ic.chunk
 				if ic.chunk.Done {
+					emit(sink, event.Event{Type: "done", Provider: pname})
 					return
 				}
 			}
 		}
 
 		if winnerIdx == -1 {
+			emit(sink, event.Event{Type: "error", Detail: "all providers failed"})
 			out <- provider.Chunk{Err: fmt.Errorf("all providers failed")}
 		}
 	}()
