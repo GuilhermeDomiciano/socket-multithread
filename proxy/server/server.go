@@ -21,5 +21,6 @@ func New(r *router.Router, sabotage map[string]*provider.Sabotage) *http.ServeMu
 	mux.HandleFunc("POST /v1/chat/completions", s.handleOpenAICompat)
 	mux.HandleFunc("GET /viz/stream", s.handleVizStream)
 	mux.HandleFunc("POST /viz/sabotage", s.handleSabotage)
+	mux.Handle("GET /", staticHandler())
 	return mux
 }

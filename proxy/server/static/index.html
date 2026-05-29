@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Proxy — Corrida Paralela</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#0f0f12; color:#eee; padding:24px; }
+  h1 { font-size:18px; margin:0 0 16px; }
+  .bar-top { display:flex; gap:8px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  #q { flex:1; min-width:240px; padding:8px 10px; border-radius:6px; border:1px solid #444; background:#1a1a1a; color:#eee; }
+  .pill { font-size:12px; padding:5px 12px; border-radius:14px; border:1px solid #555; cursor:pointer; user-select:none; }
+  .pill.on { background:#10a37f; color:#fff; border-color:#10a37f; }
+  #run { padding:8px 16px; border-radius:6px; border:0; background:#10a37f; color:#fff; font-weight:700; cursor:pointer; }
+  .lane { display:flex; align-items:center; gap:10px; margin:10px 0; }
+  .lane .pname { width:90px; font-size:13px; font-weight:700; }
+  .track { position:relative; flex:1; height:28px; background:#ffffff14; border-radius:6px; overflow:hidden; }
+  .fill { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:6px; transition:width .12s linear; background:#666; }
+  .lane.won .fill { background:#10a37f; }
+  .lane.cancelled .fill { background:#555; opacity:.35; }
+  .lane.failed .fill { background:#c0392b; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:10px; background:#333; color:#9bd; min-width:80px; text-align:center; }
+  .sab button { font-size:12px; padding:3px 8px; border-radius:5px; border:1px solid #555; background:#222; color:#ddd; cursor:pointer; }
+  #timeline { margin-top:18px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:12px; line-height:1.7; min-height:60px; }
+  #timeline b { color:#9bd; }
+  .label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#888; }
+</style>
+</head>
+<body>
+  <h1>LLM Proxy — Corrida Paralela (fan-out · first-response-wins · context cancel)</h1>
+
+  <div class="bar-top">
+    <input id="q" placeholder="Pergunte algo..." value="Explique goroutines em uma frase">
+    <span class="pill on" data-strategy="fastest">fastest</span>
+    <span class="pill" data-strategy="cheapest">cheapest</span>
+    <span class="pill" data-strategy="fallback">fallback</span>
+    <button id="run">Run</button>
+  </div>
+
+  <div id="lanes"></div>
+
+  <div class="label">timeline</div>
+  <div id="timeline"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
