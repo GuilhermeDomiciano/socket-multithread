@@ -28,7 +28,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:        ":" + port,
-		Handler:     server.New(r),
+		Handler:     server.New(r, nil),
 		ReadTimeout: time.Duration(timeoutMs) * time.Millisecond,
 		// WriteTimeout is 0 (disabled) to allow long-running SSE streams.
 	}

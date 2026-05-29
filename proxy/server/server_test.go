@@ -22,7 +22,7 @@ func newTestRouter(chunks []string) *router.Router {
 }
 
 func TestHandleQuery_returns_SSE_stream(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"hello", " world"}))
+	mux := server.New(newTestRouter([]string{"hello", " world"}), nil)
 	body := `{"messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/query", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -42,7 +42,7 @@ func TestHandleQuery_returns_SSE_stream(t *testing.T) {
 }
 
 func TestHandleQuery_returns_400_on_empty_messages(t *testing.T) {
-	mux := server.New(newTestRouter([]string{}))
+	mux := server.New(newTestRouter([]string{}), nil)
 	body := `{"messages":[]}`
 	req := httptest.NewRequest(http.MethodPost, "/query", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -55,7 +55,7 @@ func TestHandleQuery_returns_400_on_empty_messages(t *testing.T) {
 }
 
 func TestHandleOpenAICompat_streaming(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"Hi"}))
+	mux := server.New(newTestRouter([]string{"Hi"}), nil)
 	body := `{"messages":[{"role":"user","content":"hello"}],"stream":true}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -72,7 +72,7 @@ func TestHandleOpenAICompat_streaming(t *testing.T) {
 }
 
 func TestHandleOpenAICompat_non_streaming(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"Hello"}))
+	mux := server.New(newTestRouter([]string{"Hello"}), nil)
 	body := `{"messages":[{"role":"user","content":"hi"}],"stream":false}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
