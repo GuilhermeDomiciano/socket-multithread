@@ -65,4 +65,7 @@ func TestGemini_returns_error_on_non_200(t *testing.T) {
 	if last.Err == nil {
 		t.Error("expected error chunk on HTTP 429")
 	}
+	if !strings.Contains(last.Err.Error(), "quota exceeded") {
+		t.Errorf("expected error to surface the response body, got: %v", last.Err)
+	}
 }

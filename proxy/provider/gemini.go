@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -80,7 +81,11 @@ func (g *Gemini) Stream(ctx context.Context, req Request, out chan<- Chunk) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("gemini: status %d", resp.StatusCode)
+		// Surface Google's actual error message (quota, API not enabled,
+		// invalid key, model not found...) — otherwise "status 429" is opaque.
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		detail := strings.TrimSpace(string(snippet))
+		err := fmt.Errorf("gemini: status %d: %s", resp.StatusCode, detail)
 		out <- Chunk{Provider: g.Name(), Err: err}
 		return err
 	}
