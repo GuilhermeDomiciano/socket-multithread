@@ -33,8 +33,11 @@ func TestHandleQuery_returns_SSE_stream(t *testing.T) {
 		t.Errorf("expected text/event-stream, got %s", ct)
 	}
 	resp := w.Body.String()
-	if !strings.Contains(resp, `"content":"hello"`) {
-		t.Errorf("missing first chunk in: %s", resp)
+	// /query now flows through the output scrubber, which coalesces short
+	// (<48 byte) responses into one chunk, so assert content presence, not
+	// the exact first-chunk boundary.
+	if !strings.Contains(resp, "hello") {
+		t.Errorf("missing content in: %s", resp)
 	}
 	if !strings.Contains(resp, "data: [DONE]") {
 		t.Errorf("missing [DONE] in: %s", resp)
