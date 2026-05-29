@@ -13,6 +13,11 @@ var injectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)aja como`),
 	regexp.MustCompile(`(?i)jailbreak`),
 	regexp.MustCompile(`(?i)\bDAN\b`),
+	// Variações PT comuns de "ignorar/sobrescrever o sistema":
+	regexp.MustCompile(`(?i)ignore\s+(os?|as?|the)?\s*(prompt|instruç|system|sistema|regras)`),
+	regexp.MustCompile(`(?i)\b(system prompt|prompts? do sistema)\b`),
+	// Tentativas de extrair internals (prompt do sistema / código-fonte):
+	regexp.MustCompile(`(?i)(revele|me conte|mostre|diga|conte).{0,25}(prompt|c[óo]digo[- ]?fonte)`),
 }
 
 // InjectionGuard blocks prompts matching known injection patterns. It never
