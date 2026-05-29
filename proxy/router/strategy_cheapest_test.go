@@ -16,7 +16,7 @@ func TestCheapest_dispatches_to_lowest_cost_provider(t *testing.T) {
 	req := provider.Request{
 		Messages: []provider.Message{{Role: "user", Content: "hello world"}},
 	}
-	out := router.Cheapest(context.Background(), []provider.Provider{expensive, cheap}, req)
+	out := router.Cheapest(context.Background(), []provider.Provider{expensive, cheap}, req, nil)
 
 	for c := range out {
 		if c.Done || c.Err != nil {
@@ -35,7 +35,7 @@ func TestCheapest_falls_back_when_cheapest_fails(t *testing.T) {
 	req := provider.Request{
 		Messages: []provider.Message{{Role: "user", Content: "hi"}},
 	}
-	out := router.Cheapest(context.Background(), []provider.Provider{failing, working}, req)
+	out := router.Cheapest(context.Background(), []provider.Provider{failing, working}, req, nil)
 
 	var contents []string
 	for c := range out {

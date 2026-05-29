@@ -13,7 +13,7 @@ func TestFallback_skips_failing_provider_and_uses_next(t *testing.T) {
 	failing := &provider.MockProvider{MockName: "failing", FailWith: fmt.Errorf("down")}
 	working := &provider.MockProvider{MockName: "working", Chunks: []string{"ok"}}
 
-	out := router.Fallback(context.Background(), []provider.Provider{failing, working}, provider.Request{})
+	out := router.Fallback(context.Background(), []provider.Provider{failing, working}, provider.Request{}, nil)
 
 	var contents []string
 	for c := range out {
@@ -33,7 +33,7 @@ func TestFallback_returns_error_when_all_providers_fail(t *testing.T) {
 	p1 := &provider.MockProvider{MockName: "p1", FailWith: fmt.Errorf("p1 down")}
 	p2 := &provider.MockProvider{MockName: "p2", FailWith: fmt.Errorf("p2 down")}
 
-	out := router.Fallback(context.Background(), []provider.Provider{p1, p2}, provider.Request{})
+	out := router.Fallback(context.Background(), []provider.Provider{p1, p2}, provider.Request{}, nil)
 
 	var last provider.Chunk
 	for c := range out {
@@ -47,7 +47,7 @@ func TestFallback_returns_error_when_all_providers_fail(t *testing.T) {
 func TestFallback_returns_chunks_from_first_working_provider(t *testing.T) {
 	good := &provider.MockProvider{MockName: "good", Chunks: []string{"a", "b"}}
 
-	out := router.Fallback(context.Background(), []provider.Provider{good}, provider.Request{})
+	out := router.Fallback(context.Background(), []provider.Provider{good}, provider.Request{}, nil)
 
 	var contents []string
 	for c := range out {
@@ -68,7 +68,7 @@ func TestFallback_forwards_error_after_partial_content(t *testing.T) {
 	// Create a provider that sends one content chunk then an error chunk.
 	contentThenError := &contentThenErrorProvider{name: "partial"}
 
-	out := router.Fallback(context.Background(), []provider.Provider{contentThenError, backup}, provider.Request{})
+	out := router.Fallback(context.Background(), []provider.Provider{contentThenError, backup}, provider.Request{}, nil)
 
 	var gotContent bool
 	var gotError bool

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/domiciano/llm-proxy/event"
 	"github.com/domiciano/llm-proxy/provider"
 )
 
@@ -20,17 +21,25 @@ type Router struct {
 	Strategy  Strategy
 }
 
-func (r *Router) Dispatch(ctx context.Context, req provider.Request) (<-chan provider.Chunk, error) {
+// emit is a nil-safe shortcut: when sink is nil, nothing happens and the
+// production path is unaffected.
+func emit(sink event.Sink, e event.Event) {
+	if sink != nil {
+		sink.Emit(e)
+	}
+}
+
+func (r *Router) Dispatch(ctx context.Context, req provider.Request, sink event.Sink) (<-chan provider.Chunk, error) {
 	if len(r.Providers) == 0 {
 		return nil, fmt.Errorf("no providers configured")
 	}
 	switch r.Strategy {
 	case StrategyFastest, "":
-		return Fastest(ctx, r.Providers, req), nil
+		return Fastest(ctx, r.Providers, req, sink), nil
 	case StrategyCheapest:
-		return Cheapest(ctx, r.Providers, req), nil
+		return Cheapest(ctx, r.Providers, req, sink), nil
 	case StrategyFallback:
-		return Fallback(ctx, r.Providers, req), nil
+		return Fallback(ctx, r.Providers, req, sink), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", r.Strategy)
 	}

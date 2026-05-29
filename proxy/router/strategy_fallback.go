@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/domiciano/llm-proxy/event"
 	"github.com/domiciano/llm-proxy/provider"
 )
 
@@ -12,7 +13,7 @@ import (
 // if the current one sends an error chunk before producing any content.
 // If a provider starts streaming content and then errors, that error is forwarded
 // to the client — a partial stream cannot be retried transparently.
-func Fallback(ctx context.Context, providers []provider.Provider, req provider.Request) <-chan provider.Chunk {
+func Fallback(ctx context.Context, providers []provider.Provider, req provider.Request, sink event.Sink) <-chan provider.Chunk {
 	out := make(chan provider.Chunk, 64)
 
 	go func() {

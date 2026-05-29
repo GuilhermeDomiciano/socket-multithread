@@ -40,7 +40,7 @@ func (s *Server) handleOpenAICompat(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	chunks, err := s.Router.Dispatch(ctx, provider.Request{Messages: messages, MaxTokens: req.MaxTokens})
+	chunks, err := s.Router.Dispatch(ctx, provider.Request{Messages: messages, MaxTokens: req.MaxTokens}, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

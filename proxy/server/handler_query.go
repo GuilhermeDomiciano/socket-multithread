@@ -41,7 +41,7 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		Messages:    req.Messages,
 		MaxTokens:   req.MaxTokens,
 		Temperature: req.Temperature,
-	})
+	}, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

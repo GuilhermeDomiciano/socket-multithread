@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/domiciano/llm-proxy/event"
 	"github.com/domiciano/llm-proxy/provider"
 )
 
 // Fastest fans out to all providers in parallel and returns chunks from the
 // first provider to produce a non-error chunk. Losers are cancelled immediately.
-func Fastest(ctx context.Context, providers []provider.Provider, req provider.Request) <-chan provider.Chunk {
+func Fastest(ctx context.Context, providers []provider.Provider, req provider.Request, sink event.Sink) <-chan provider.Chunk {
 	out := make(chan provider.Chunk, 64)
 
 	go func() {
