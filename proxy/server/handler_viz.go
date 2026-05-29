@@ -2,12 +2,13 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/domiciano/llm-proxy/event"
-	"github.com/domiciano/llm-proxy/provider"
+	"github.com/domiciano/llm-proxy/pipeline"
 	"github.com/domiciano/llm-proxy/router"
 )
 
@@ -22,7 +23,7 @@ func (s *Server) handleVizStream(w http.ResponseWriter, r *http.Request) {
 	}
 	strategy := router.Strategy(r.URL.Query().Get("strategy"))
 	switch strategy {
-	case "", router.StrategyFastest, router.StrategyCheapest, router.StrategyFallback:
+	case "", "auto", router.StrategyFastest, router.StrategyCheapest, router.StrategyFallback:
 	default:
 		http.Error(w, "invalid strategy", http.StatusBadRequest)
 		return
@@ -38,15 +39,15 @@ func (s *Server) handleVizStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Connection", "keep-alive")
 
-	rtr := &router.Router{Providers: s.Router.Providers, Strategy: strategy}
 	sink := event.NewChanSink(64, time.Now(), r.Context().Done())
 
 	go func() {
-		chunks, err := rtr.Dispatch(r.Context(), provider.Request{
-			Messages: []provider.Message{{Role: "user", Content: q}},
-		}, sink)
+		chunks, err := s.Gateway.Process(r.Context(), q, strategy, sink)
 		if err != nil {
-			sink.Emit(event.Event{Type: "error", Detail: err.Error()})
+			if !errors.Is(err, pipeline.ErrBlocked) {
+				sink.Emit(event.Event{Type: "error", Detail: err.Error()})
+			}
+			// On ErrBlocked the "blocked" event was already emitted by Process.
 			sink.Close()
 			return
 		}
