@@ -22,6 +22,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 		for _, p := range providers {
 			pCtx, cancel := context.WithCancel(ctx)
 			ch := make(chan provider.Chunk, 64)
+			emit(sink, event.Event{Type: "provider_start", Provider: p.Name()})
 			go func() {
 				p.Stream(pCtx, req, ch) //nolint:errcheck
 			}()
@@ -39,14 +40,19 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 					}
 					providerFailed = true
 					errs = append(errs, c.Err)
+					emit(sink, event.Event{Type: "failed", Provider: p.Name(), Detail: c.Err.Error()})
 					cancel()
 					break
+				}
+				if !c.Done {
+					emit(sink, event.Event{Type: "chunk", Provider: p.Name(), Content: c.Content})
 				}
 				out <- c
 				if !c.Done {
 					sentContent = true
 				}
 				if c.Done {
+					emit(sink, event.Event{Type: "done", Provider: p.Name()})
 					cancel()
 					return
 				}
@@ -57,6 +63,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 				continue
 			}
 		}
+		emit(sink, event.Event{Type: "error", Detail: "all providers failed"})
 		out <- provider.Chunk{Err: fmt.Errorf("all providers failed: %w", errors.Join(errs...))}
 	}()
 

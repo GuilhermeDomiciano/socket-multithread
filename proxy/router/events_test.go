@@ -100,3 +100,23 @@ func TestDispatch_emits_start(t *testing.T) {
 		t.Errorf("expected start event, got %v", sink.typesList())
 	}
 }
+
+func TestFallback_emits_failed_then_done(t *testing.T) {
+	bad := &provider.MockProvider{MockName: "bad", FailWith: fmt.Errorf("down")}
+	good := &provider.MockProvider{MockName: "good", Chunks: []string{"ok"}}
+	sink := &recSink{}
+
+	out := router.Fallback(context.Background(), []provider.Provider{bad, good}, provider.Request{}, sink)
+	for range out {
+	}
+
+	if !sink.has("provider_start", "bad") || !sink.has("provider_start", "good") {
+		t.Errorf("expected provider_start for both, got %v", sink.typesList())
+	}
+	if !sink.has("failed", "bad") {
+		t.Errorf("expected failed for bad, got %v", sink.typesList())
+	}
+	if !sink.has("done", "good") {
+		t.Errorf("expected done for good, got %v", sink.typesList())
+	}
+}
