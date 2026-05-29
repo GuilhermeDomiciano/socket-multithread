@@ -23,16 +23,23 @@ type Sink interface {
 // ChanSink is a Sink backed by a buffered channel. It stamps each event with
 // the elapsed time since start and never blocks once done is closed (so a
 // disconnected client cannot leak the producing goroutines).
+//
+// Size buf generously for expected bursts; see Emit for the exact blocking contract.
 type ChanSink struct {
 	ch    chan Event
 	done  <-chan struct{}
 	start time.Time
 }
 
+// NewChanSink creates a ChanSink. buf=0 creates an unbuffered channel, which is
+// mainly intended for tests where the reader is synchronised with the writer.
 func NewChanSink(buf int, start time.Time, done <-chan struct{}) *ChanSink {
 	return &ChanSink{ch: make(chan Event, buf), done: done, start: start}
 }
 
+// Emit stamps the event with elapsed time and sends it. It is non-blocking only
+// when done is closed; if the buffer is full and done is still open it blocks
+// until space frees or done closes. Size buf generously for expected bursts.
 func (s *ChanSink) Emit(e Event) {
 	e.T = time.Since(s.start).Milliseconds()
 	select {

@@ -83,6 +83,7 @@ func writeOAIStream(w http.ResponseWriter, r *http.Request, chunks <-chan provid
 				return
 			}
 			event := map[string]interface{}{
+				"model": chunk.Provider,
 				"choices": []map[string]interface{}{
 					{"delta": map[string]string{"content": chunk.Content}},
 				},
@@ -95,7 +96,7 @@ func writeOAIStream(w http.ResponseWriter, r *http.Request, chunks <-chan provid
 }
 
 func writeOAIComplete(w http.ResponseWriter, chunks <-chan provider.Chunk) {
-	var content string
+	var content, model string
 	var providerErr error
 	for chunk := range chunks {
 		if chunk.Err != nil {
@@ -104,6 +105,9 @@ func writeOAIComplete(w http.ResponseWriter, chunks <-chan provider.Chunk) {
 		}
 		if !chunk.Done {
 			content += chunk.Content
+			if model == "" {
+				model = chunk.Provider
+			}
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -113,6 +117,7 @@ func writeOAIComplete(w http.ResponseWriter, chunks <-chan provider.Chunk) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+		"model": model,
 		"choices": []map[string]interface{}{
 			{
 				"message":       map[string]string{"role": "assistant", "content": content},
