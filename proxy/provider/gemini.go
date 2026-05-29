@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -18,7 +19,13 @@ type Gemini struct {
 }
 
 func NewGemini(apiKey string) *Gemini {
-	return &Gemini{APIKey: apiKey, Model: "gemini-2.0-flash", BaseURL: "https://generativelanguage.googleapis.com"}
+	// gemini-2.0-flash has no free-tier quota on some projects (limit: 0).
+	// Default to gemini-2.5-flash, overridable via GEMINI_MODEL.
+	model := os.Getenv("GEMINI_MODEL")
+	if model == "" {
+		model = "gemini-2.5-flash"
+	}
+	return &Gemini{APIKey: apiKey, Model: model, BaseURL: "https://generativelanguage.googleapis.com"}
 }
 
 func (g *Gemini) Name() string             { return "gemini" }
