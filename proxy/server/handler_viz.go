@@ -63,3 +63,39 @@ func (s *Server) handleVizStream(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "data: [DONE]\n\n")
 	flusher.Flush()
 }
+
+type sabotageReq struct {
+	Provider string `json:"provider"`
+	Mode     string `json:"mode"` // "fail" | "delay" | "clear"
+	DelayMs  int    `json:"delay_ms,omitempty"`
+}
+
+func (s *Server) handleSabotage(w http.ResponseWriter, r *http.Request) {
+	var req sabotageReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	sab, ok := s.Sabotage[req.Provider]
+	if !ok {
+		http.Error(w, "unknown provider", http.StatusNotFound)
+		return
+	}
+	switch req.Mode {
+	case "fail":
+		sab.SetFail(true)
+	case "delay":
+		sab.SetDelay(time.Duration(req.DelayMs) * time.Millisecond)
+	case "clear":
+		sab.Clear()
+	default:
+		http.Error(w, "invalid mode", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
+		"status":   "ok",
+		"provider": req.Provider,
+		"mode":     req.Mode,
+	})
+}

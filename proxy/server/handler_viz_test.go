@@ -55,3 +55,38 @@ func TestVizStream_400_invalid_strategy(t *testing.T) {
 		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestSabotage_404_unknown_provider(t *testing.T) {
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{})
+	body := `{"provider":"nope","mode":"fail"}`
+	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestSabotage_400_invalid_mode(t *testing.T) {
+	sab := provider.NewSabotage(&provider.MockProvider{MockName: "openai", Chunks: []string{"x"}})
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab})
+	body := `{"provider":"openai","mode":"explode"}`
+	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestSabotage_200_sets_fail(t *testing.T) {
+	sab := provider.NewSabotage(&provider.MockProvider{MockName: "openai", Chunks: []string{"x"}})
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab})
+	body := `{"provider":"openai","mode":"fail"}`
+	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+}
