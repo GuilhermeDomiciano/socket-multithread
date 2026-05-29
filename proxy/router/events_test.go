@@ -120,3 +120,18 @@ func TestFallback_emits_failed_then_done(t *testing.T) {
 		t.Errorf("expected done for good, got %v", sink.typesList())
 	}
 }
+
+func TestCheapest_emits_decision(t *testing.T) {
+	cheap := &provider.MockProvider{MockName: "cheap", MockCost: 0.001, Chunks: []string{"x"}}
+	pricey := &provider.MockProvider{MockName: "pricey", MockCost: 0.05, Chunks: []string{"y"}}
+	sink := &recSink{}
+	req := provider.Request{Messages: []provider.Message{{Role: "user", Content: "hello world"}}}
+
+	out := router.Cheapest(context.Background(), []provider.Provider{pricey, cheap}, req, sink)
+	for range out {
+	}
+
+	if !sink.has("decision", "") {
+		t.Errorf("expected decision event, got %v", sink.typesList())
+	}
+}
