@@ -49,6 +49,7 @@ function ensureLane(name) {
     <span class="sab">
       <button data-mode="fail">💥</button>
       <button data-mode="delay">⏱ +5s</button>
+      <button data-mode="clear">♻️</button>
     </span>`;
   document.getElementById("lanes").appendChild(wrap);
   const lane = {
