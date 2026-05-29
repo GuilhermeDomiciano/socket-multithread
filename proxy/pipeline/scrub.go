@@ -56,7 +56,12 @@ func scrub(ctx context.Context, in <-chan provider.Chunk, guard guardrail.Guard,
 					flush(buf, c.Provider)
 					buf = ""
 					send(c)
-					return
+					// Do NOT return here: keep reading until `in` is closed.
+					// Upstream (router) emits its terminal "done"/"error" event
+					// to the sink AFTER sending this chunk and only closes `in`
+					// last (deferred). Waiting for the close guarantees all
+					// upstream sink emits happen-before the consumer's Close().
+					continue
 				}
 				buf += c.Content
 				if len(buf) > scrubCarry {
