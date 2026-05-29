@@ -15,9 +15,19 @@ import (
 )
 
 func main() {
-	providers := buildProviders()
-	if len(providers) == 0 {
+	rawProviders := buildProviders()
+	if len(rawProviders) == 0 {
 		log.Fatal("no providers configured — set at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY")
+	}
+
+	// Wrap each real provider in a Sabotage decorator so the live dashboard can
+	// inject failures/latency at runtime. Inert by default (zero overhead).
+	sabotage := make(map[string]*provider.Sabotage, len(rawProviders))
+	providers := make([]provider.Provider, len(rawProviders))
+	for i, p := range rawProviders {
+		s := provider.NewSabotage(p)
+		sabotage[p.Name()] = s
+		providers[i] = s
 	}
 
 	strategy := router.Strategy(getEnv("PROXY_STRATEGY", "fastest"))
@@ -28,7 +38,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:        ":" + port,
-		Handler:     server.New(r, nil),
+		Handler:     server.New(r, sabotage),
 		ReadTimeout: time.Duration(timeoutMs) * time.Millisecond,
 		// WriteTimeout is 0 (disabled) to allow long-running SSE streams.
 	}
