@@ -16,7 +16,7 @@ func TestVizStream_emits_events(t *testing.T) {
 		Providers: []provider.Provider{&provider.MockProvider{MockName: "mock", Chunks: []string{"hi"}}},
 		Strategy:  router.StrategyFastest,
 	}
-	mux := server.New(r, nil)
+	mux := server.New(r, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/viz/stream?q=hello&strategy=fastest", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -37,7 +37,7 @@ func TestVizStream_emits_events(t *testing.T) {
 }
 
 func TestVizStream_400_without_q(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"x"}), nil)
+	mux := server.New(newTestRouter([]string{"x"}), nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/viz/stream", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -47,7 +47,7 @@ func TestVizStream_400_without_q(t *testing.T) {
 }
 
 func TestVizStream_400_invalid_strategy(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"x"}), nil)
+	mux := server.New(newTestRouter([]string{"x"}), nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/viz/stream?q=hi&strategy=bogus", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -57,7 +57,7 @@ func TestVizStream_400_invalid_strategy(t *testing.T) {
 }
 
 func TestDashboard_served_at_root(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"x"}), nil)
+	mux := server.New(newTestRouter([]string{"x"}), nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -70,7 +70,7 @@ func TestDashboard_served_at_root(t *testing.T) {
 }
 
 func TestSabotage_404_unknown_provider(t *testing.T) {
-	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{})
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{}, nil)
 	body := `{"provider":"nope","mode":"fail"}`
 	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
 	w := httptest.NewRecorder()
@@ -82,7 +82,7 @@ func TestSabotage_404_unknown_provider(t *testing.T) {
 
 func TestSabotage_400_invalid_mode(t *testing.T) {
 	sab := provider.NewSabotage(&provider.MockProvider{MockName: "openai", Chunks: []string{"x"}})
-	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab})
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab}, nil)
 	body := `{"provider":"openai","mode":"explode"}`
 	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
 	w := httptest.NewRecorder()
@@ -94,7 +94,7 @@ func TestSabotage_400_invalid_mode(t *testing.T) {
 
 func TestSabotage_200_sets_fail(t *testing.T) {
 	sab := provider.NewSabotage(&provider.MockProvider{MockName: "openai", Chunks: []string{"x"}})
-	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab})
+	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{"openai": sab}, nil)
 	body := `{"provider":"openai","mode":"fail"}`
 	req := httptest.NewRequest(http.MethodPost, "/viz/sabotage", strings.NewReader(body))
 	w := httptest.NewRecorder()

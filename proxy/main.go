@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/domiciano/llm-proxy/guardrail"
+	"github.com/domiciano/llm-proxy/pipeline"
 	"github.com/domiciano/llm-proxy/provider"
 	"github.com/domiciano/llm-proxy/router"
 	"github.com/domiciano/llm-proxy/server"
@@ -36,9 +38,15 @@ func main() {
 	port := getEnv("PROXY_PORT", "8080")
 	timeoutMs, _ := strconv.Atoi(getEnv("PROXY_TIMEOUT_MS", "5000"))
 
+	gateway := &pipeline.Gateway{
+		Input:  guardrail.Chain{guardrail.NewInjectionGuard(), guardrail.NewPIIGuard()},
+		Output: guardrail.NewPIIGuard(),
+		Router: r,
+	}
+
 	srv := &http.Server{
 		Addr:        ":" + port,
-		Handler:     server.New(r, sabotage),
+		Handler:     server.New(r, sabotage, gateway),
 		ReadTimeout: time.Duration(timeoutMs) * time.Millisecond,
 		// WriteTimeout is 0 (disabled) to allow long-running SSE streams.
 	}
