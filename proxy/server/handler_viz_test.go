@@ -56,6 +56,19 @@ func TestVizStream_400_invalid_strategy(t *testing.T) {
 	}
 }
 
+func TestDashboard_served_at_root(t *testing.T) {
+	mux := server.New(newTestRouter([]string{"x"}), nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for /, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Corrida Paralela") {
+		t.Errorf("expected dashboard HTML at /, got status %d body-len %d", w.Code, w.Body.Len())
+	}
+}
+
 func TestSabotage_404_unknown_provider(t *testing.T) {
 	mux := server.New(newTestRouter([]string{"x"}), map[string]*provider.Sabotage{})
 	body := `{"provider":"nope","mode":"fail"}`
