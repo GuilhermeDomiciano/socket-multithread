@@ -91,6 +91,9 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 				// Loser error arriving after the winner was chosen — ignore for output.
 				continue
 			}
+			// Emit chunk telemetry for EVERY provider (winners and stragglers) so the
+			// dashboard can show each lane advancing — but only the winner's chunks are
+			// forwarded to out below.
 			if !ic.chunk.Done {
 				emit(sink, event.Event{Type: "chunk", Provider: pname, Content: ic.chunk.Content})
 			}
