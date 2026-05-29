@@ -1,4 +1,4 @@
-let strategy = "fastest";
+let strategy = "auto";
 const lanes = {}; // provider name -> { el, fill, badge, chunks }
 
 document.querySelectorAll(".pill").forEach(p => {
@@ -26,6 +26,13 @@ function run() {
   document.getElementById("lanes").innerHTML = "";
   document.getElementById("timeline").innerHTML = "";
   for (const k in lanes) delete lanes[k];
+  ["st-in", "st-intent", "st-race", "st-out"].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove("ok", "bad");
+    el.querySelector(".sv").textContent = "—";
+    const m = el.querySelector(".masked");
+    if (m) m.textContent = "";
+  });
 
   const q = encodeURIComponent(document.getElementById("q").value);
   const es = new EventSource(`/viz/stream?q=${q}&strategy=${strategy}`);
@@ -70,10 +77,41 @@ function tl(text) {
   t.innerHTML += text + "<br>";
 }
 
+function setStage(id, text, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.querySelector(".sv").textContent = text;
+  if (cls) el.classList.add(cls);
+}
+
 function handle(e) {
   switch (e.type) {
+    case "guard_in":
+      setStage("st-in", `mascarado: ${esc(e.detail)} ${esc(e.content)}`, "ok");
+      tl(`t=${e.t}ms · guard_in: ${esc(e.detail)} → ${esc(e.content)}`);
+      break;
+    case "masked_prompt": {
+      const stIn = document.getElementById("st-in");
+      const m = stIn.querySelector(".masked");
+      if (m) m.textContent = "prompt→LLM: " + e.content; // textContent is XSS-safe
+      if (!stIn.classList.contains("bad")) stIn.classList.add("ok");
+      break;
+    }
+    case "blocked":
+      setStage("st-in", `BLOQUEADO: ${esc(e.detail)}`, "bad");
+      tl(`<b>t=${e.t}ms</b> · BLOQUEADO: ${esc(e.detail)}`);
+      break;
+    case "intent":
+      setStage("st-intent", esc(e.detail), "ok");
+      tl(`t=${e.t}ms · intent: ${esc(e.detail)}`);
+      break;
+    case "guard_out":
+      setStage("st-out", `${esc(e.detail)} ${esc(e.content)}`, "ok");
+      tl(`t=${e.t}ms · guard_out: ${esc(e.detail)}`);
+      break;
     case "start":
       tl(`<b>t=${e.t}ms</b> · start (${esc(e.detail)})`);
+      setStage("st-race", "correndo...", "ok");
       break;
     case "provider_start": {
       ensureLane(e.provider);

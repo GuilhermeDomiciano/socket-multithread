@@ -25,6 +25,12 @@
   #timeline { margin-top:18px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:12px; line-height:1.7; min-height:60px; }
   #timeline b { color:#9bd; }
   .label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#888; }
+  #pipeline { display:flex; gap:8px; margin:14px 0; flex-wrap:wrap; }
+  .stage { flex:1; min-width:160px; background:#ffffff10; border-radius:6px; padding:8px 10px; font-size:12px; border-left:3px solid #555; }
+  .stage.ok { border-left-color:#10a37f; }
+  .stage.bad { border-left-color:#c0392b; }
+  .stage .sv { color:#9bd; }
+  .stage .masked { margin-top:4px; font-size:11px; color:#bbb; word-break:break-word; }
 </style>
 </head>
 <body>
@@ -32,10 +38,18 @@
 
   <div class="bar-top">
     <input id="q" placeholder="Pergunte algo..." value="Explique goroutines em uma frase">
-    <span class="pill on" data-strategy="fastest">fastest</span>
+    <span class="pill on" data-strategy="auto">auto</span>
+    <span class="pill" data-strategy="fastest">fastest</span>
     <span class="pill" data-strategy="cheapest">cheapest</span>
     <span class="pill" data-strategy="fallback">fallback</span>
     <button id="run">Run</button>
+  </div>
+
+  <div id="pipeline">
+    <div class="stage" id="st-in"><b>① Guard In</b> <span class="sv">—</span><div class="masked"></div></div>
+    <div class="stage" id="st-intent"><b>② Intent</b> <span class="sv">—</span></div>
+    <div class="stage" id="st-race"><b>③ Race</b> <span class="sv">—</span></div>
+    <div class="stage" id="st-out"><b>④ Guard Out</b> <span class="sv">—</span></div>
   </div>
 
   <div id="lanes"></div>
