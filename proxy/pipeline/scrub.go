@@ -41,6 +41,11 @@ func scrub(ctx context.Context, in <-chan provider.Chunk, guard guardrail.Guard,
 			for _, f := range r.Findings {
 				emit(sink, event.Event{Type: "guard_out", Detail: f.Type, Content: f.Placeholder})
 			}
+			// Stream the sanitized text to the dashboard so the user can read
+			// the answer (already scrubbed — consistent with Guard Out).
+			if r.Text != "" {
+				emit(sink, event.Event{Type: "out_chunk", Provider: prov, Content: r.Text})
+			}
 			send(provider.Chunk{Content: r.Text, Provider: prov})
 		}
 		for {

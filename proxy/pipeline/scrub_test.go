@@ -63,6 +63,9 @@ func TestScrub_masks_pii_in_output(t *testing.T) {
 	if !sink.has("guard_out") {
 		t.Error("expected a guard_out event")
 	}
+	if !sink.has("out_chunk") {
+		t.Error("expected an out_chunk event carrying the sanitized answer")
+	}
 }
 
 func TestScrub_catches_pii_split_across_chunks(t *testing.T) {

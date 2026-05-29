@@ -33,6 +33,8 @@ function run() {
     const m = el.querySelector(".masked");
     if (m) m.textContent = "";
   });
+  document.getElementById("response").textContent = "";
+  document.getElementById("resp-prov").textContent = "";
 
   const q = encodeURIComponent(document.getElementById("q").value);
   const es = new EventSource(`/viz/stream?q=${q}&strategy=${strategy}`);
@@ -109,6 +111,13 @@ function handle(e) {
       setStage("st-out", `${esc(e.detail)} ${esc(e.content)}`, "ok");
       tl(`t=${e.t}ms · guard_out: ${esc(e.detail)}`);
       break;
+    case "out_chunk": {
+      const rp = document.getElementById("resp-prov");
+      if (!rp.textContent && e.provider) rp.textContent = "(" + e.provider + ")";
+      // textContent is XSS-safe; the answer is also already PII-scrubbed.
+      document.getElementById("response").textContent += e.content;
+      break;
+    }
     case "start":
       tl(`<b>t=${e.t}ms</b> · start (${esc(e.detail)})`);
       setStage("st-race", "correndo...", "ok");

@@ -22,6 +22,8 @@
   .lane.failed .fill { background:#c0392b; }
   .badge { font-size:11px; padding:2px 8px; border-radius:10px; background:#333; color:#9bd; min-width:80px; text-align:center; }
   .sab button { font-size:12px; padding:3px 8px; border-radius:5px; border:1px solid #555; background:#222; color:#ddd; cursor:pointer; }
+  #response { margin-top:6px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:13px; line-height:1.6; min-height:48px; white-space:pre-wrap; word-break:break-word; }
+  #resp-prov { color:#10a37f; text-transform:none; letter-spacing:0; }
   #timeline { margin-top:18px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:12px; line-height:1.7; min-height:60px; }
   #timeline b { color:#9bd; }
   .label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#888; }
@@ -53,6 +55,9 @@
   </div>
 
   <div id="lanes"></div>
+
+  <div class="label">resposta da IA <span id="resp-prov"></span></div>
+  <div id="response"></div>
 
   <div class="label">timeline</div>
   <div id="timeline"></div>
