@@ -72,6 +72,30 @@ func TestVizStream_blocks_injection_event(t *testing.T) {
 	}
 }
 
+func TestVizStream_benchmark_emits_speedup(t *testing.T) {
+	r := &router.Router{
+		Providers: []provider.Provider{
+			&provider.MockProvider{MockName: "p1", Chunks: []string{"a"}},
+			&provider.MockProvider{MockName: "p2", Chunks: []string{"b"}},
+		},
+	}
+	mux := server.New(r, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/viz/stream?q=hi&strategy=benchmark", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	body := w.Body.String()
+	if !strings.Contains(body, `"type":"speedup"`) {
+		t.Errorf("faltou speedup em: %s", body)
+	}
+	if !strings.Contains(body, `"phase":"seq"`) || !strings.Contains(body, `"phase":"par"`) {
+		t.Errorf("faltaram eventos com fase em: %s", body)
+	}
+	if !strings.Contains(body, "data: [DONE]") {
+		t.Errorf("faltou [DONE] em: %s", body)
+	}
+}
+
 func TestVizStream_400_without_q(t *testing.T) {
 	mux := server.New(newTestRouter([]string{"x"}), nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/viz/stream", nil)

@@ -23,7 +23,7 @@ func (s *Server) handleVizStream(w http.ResponseWriter, r *http.Request) {
 	}
 	strategy := router.Strategy(r.URL.Query().Get("strategy"))
 	switch strategy {
-	case "", "auto", router.StrategyFastest, router.StrategyCheapest, router.StrategyFallback:
+	case "", "auto", router.StrategyFastest, router.StrategyCheapest, router.StrategyFallback, "benchmark":
 	default:
 		http.Error(w, "invalid strategy", http.StatusBadRequest)
 		return
@@ -42,6 +42,16 @@ func (s *Server) handleVizStream(w http.ResponseWriter, r *http.Request) {
 	sink := event.NewChanSink(64, time.Now(), r.Context().Done())
 
 	go func() {
+		if strategy == "benchmark" {
+			if err := s.Gateway.Benchmark(r.Context(), q, sink); err != nil {
+				if !errors.Is(err, pipeline.ErrBlocked) {
+					sink.Emit(event.Event{Type: "error", Detail: err.Error()})
+				}
+				// Em ErrBlocked o evento "blocked" já foi emitido por Benchmark.
+			}
+			sink.Close()
+			return
+		}
 		chunks, err := s.Gateway.Process(r.Context(), q, strategy, sink)
 		if err != nil {
 			if !errors.Is(err, pipeline.ErrBlocked) {
