@@ -313,6 +313,115 @@ h2 em { font-style: italic; color: var(--ink-dim); }
 .flow-stack { display: flex; flex-direction: column; gap: 6px; }
 .flow-arrow { font-size: 34px; color: var(--yellow-dim); font-family: var(--disp); font-weight: 900; }
 
+/* ============ gpflow — circuito da visão geral (lap 5) ============ */
+.gpflow {
+  display: grid;
+  grid-template-columns: auto 64px auto minmax(300px, 1fr) auto;
+  align-items: center; gap: 0 20px;
+  margin: 14px 0 36px;
+}
+.gp-node {
+  background: linear-gradient(180deg, var(--panel-2), var(--asphalt-2));
+  border: 1px solid var(--line); border-radius: var(--r);
+  padding: clamp(18px, 2.2vh, 28px) clamp(20px, 2vw, 32px);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.gpflow .fn-title { font-size: clamp(22px, 2.4vw, 34px); }
+.gpflow .fn-sub { font-size: 15px; }
+.gp-node--hot { border-color: var(--yellow-dim); box-shadow: 0 0 26px rgba(244,194,13,.18); }
+.gp-node--hot .fn-title { color: var(--gold); }
+.gp-node--win { border-color: #1b6b3a; box-shadow: 0 0 26px rgba(31,214,95,.18); }
+.gp-node--win .fn-title { color: var(--green); }
+.lap.seen .gp-node--win { animation: gpwinpulse 5.6s ease-in-out infinite; }
+@keyframes gpwinpulse {
+  0%, 50%, 72%, 100% { box-shadow: 0 0 26px rgba(31,214,95,.18); }
+  58%, 64%          { box-shadow: 0 0 46px rgba(31,214,95,.55); }
+}
+
+/* requisição cliente → gateway */
+.gp-link {
+  position: relative; height: 4px; border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 10px, transparent 10px 22px);
+}
+
+/* as três raias do fan-out */
+.gp-fan { display: flex; flex-direction: column; gap: clamp(12px, 2vh, 20px); }
+.gp-lane {
+  display: grid; grid-template-columns: minmax(120px, auto) 1fr 92px;
+  align-items: center; gap: 14px;
+}
+.gp-prov { font-family: var(--disp); font-weight: 700; font-size: clamp(17px, 1.7vw, 22px); white-space: nowrap; }
+.gp-track {
+  position: relative; height: 14px; border-radius: 999px;
+  background: linear-gradient(180deg, #1a1c21, #101216);
+  border: 1px solid #000; box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.gp-track::before { /* faixa central tracejada */
+  content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 2px;
+  transform: translateY(-50%);
+  background: repeating-linear-gradient(90deg, var(--yellow-dim) 0 12px, transparent 12px 26px);
+  opacity: .3;
+}
+.gp-lane em {
+  font-family: var(--mono); font-style: normal; font-size: 13.5px; font-weight: 700;
+  letter-spacing: .05em; color: var(--ink-faint); text-transform: uppercase;
+  opacity: 0;
+}
+.gp-lane .gp-flagtag { color: var(--green); }
+
+/* os pontos de luz correndo */
+.gp-dot {
+  position: absolute; top: 50%; left: 0;
+  width: 15px; height: 15px; margin-top: -7.5px; border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 12px var(--yellow), 0 0 26px rgba(244,194,13,.5);
+  opacity: 0;
+}
+.gp-dot--feed { width: 12px; height: 12px; margin-top: -6px; }
+/* ciclo de 5.6s: requisição entra (0–16%), corrida (20–55%), vencedor pulsa,
+   perdedores morrem no meio da pista, tags aparecem, e recomeça */
+.lap.seen .gp-dot--feed                 { animation: gpfeed 5.6s ease-in-out infinite; }
+.lap.seen .gp-lane--win .gp-dot        { animation: gprun-win 5.6s ease-in-out infinite; }
+.lap.seen .gp-lane--l1  .gp-dot        { animation: gprun-l1  5.6s ease-in-out infinite; }
+.lap.seen .gp-lane--l2  .gp-dot        { animation: gprun-l2  5.6s ease-in-out infinite; }
+.lap.seen .gp-lane--win em             { animation: gptag 5.6s linear infinite; }
+.lap.seen .gp-lane--l1  em,
+.lap.seen .gp-lane--l2  em             { animation: gptag-lose 5.6s linear infinite; }
+@keyframes gpfeed {
+  0%       { left: 0; opacity: 0; }
+  4%       { opacity: 1; }
+  15%      { left: calc(100% - 12px); opacity: 1; }
+  19%, 100%{ left: calc(100% - 12px); opacity: 0; }
+}
+@keyframes gprun-win {
+  0%, 20%  { left: 0; opacity: 0; }
+  25%      { opacity: 1; }
+  54%      { left: calc(100% - 15px); opacity: 1; }
+  62%, 100%{ left: calc(100% - 15px); opacity: 0; }
+}
+@keyframes gprun-l1 {
+  0%, 20%  { left: 0; opacity: 0; }
+  25%      { opacity: 1; }
+  50%      { left: 56%; opacity: 1; }
+  58%, 100%{ left: 56%; opacity: 0; }
+}
+@keyframes gprun-l2 {
+  0%, 20%  { left: 0; opacity: 0; }
+  25%      { opacity: 1; }
+  46%      { left: 38%; opacity: 1; }
+  56%, 100%{ left: 38%; opacity: 0; }
+}
+@keyframes gptag {
+  0%, 54%  { opacity: 0; }
+  58%, 92% { opacity: 1; }
+  97%, 100%{ opacity: 0; }
+}
+@keyframes gptag-lose {
+  0%, 58%  { opacity: 0; }
+  62%, 92% { opacity: .8; }
+  97%, 100%{ opacity: 0; }
+}
+
 /* ========================= layer chain (lap 4) ========================= */
 .layerchain { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
 .layerchain .flow-arrow { align-self: center; font-size: 26px; }
@@ -654,6 +763,8 @@ body.js .rv.in { opacity: 1; transform: none; }
   .cards--3 { grid-template-columns: 1fr; }
   .split, .split--bench { grid-template-columns: 1fr; }
   .rail { grid-template-columns: repeat(2, 1fr); }
+  .gpflow { grid-template-columns: 1fr; gap: 14px; }
+  .gp-link { display: none; }
   .hud-keys { display: none; }
   #grid-overlay nav { grid-template-columns: repeat(2, 1fr); }
 }
@@ -683,4 +794,6 @@ body.js .rv.in { opacity: 1; transform: none; }
   .rl-tag { opacity: 1; }
   .bb-fill--seq { width: 100%; }
   .bb-fill--par { width: 37%; }
+  .gp-dot { display: none; }
+  .gp-lane em { opacity: 1; }
 }

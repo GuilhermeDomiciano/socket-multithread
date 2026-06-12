@@ -155,24 +155,34 @@
   <div class="wrap">
     <p class="kicker rv">VISÃO GERAL</p>
     <h2 class="rv" style="--i:1">Um prompt entra,<br>vários provedores correm</h2>
-    <div class="flow rv" style="--i:2">
-      <div class="flow-node">
+    <div class="gpflow rv" style="--i:2">
+      <div class="gp-node">
         <span class="fn-title">Cliente</span>
         <span class="fn-sub">1 requisição HTTP</span>
       </div>
-      <span class="flow-arrow">›</span>
-      <div class="flow-node flow-node--hot">
+      <div class="gp-link" aria-hidden="true"><b class="gp-dot gp-dot--feed"></b></div>
+      <div class="gp-node gp-node--hot">
         <span class="fn-title">Gateway</span>
         <span class="fn-sub">fan-out paralelo</span>
       </div>
-      <span class="flow-arrow">›</span>
-      <div class="flow-stack">
-        <div class="flow-node flow-node--mini"><span class="fn-title">OpenAI</span></div>
-        <div class="flow-node flow-node--mini"><span class="fn-title">Gemini</span></div>
-        <div class="flow-node flow-node--mini"><span class="fn-title">Fusion / Azure</span></div>
+      <div class="gp-fan">
+        <div class="gp-lane gp-lane--win">
+          <span class="gp-prov">OpenAI</span>
+          <div class="gp-track"><b class="gp-dot"></b></div>
+          <em class="gp-flagtag">🏁 1º</em>
+        </div>
+        <div class="gp-lane gp-lane--l1">
+          <span class="gp-prov">Gemini</span>
+          <div class="gp-track"><b class="gp-dot"></b></div>
+          <em>cancelado</em>
+        </div>
+        <div class="gp-lane gp-lane--l2">
+          <span class="gp-prov">Fusion / Azure</span>
+          <div class="gp-track"><b class="gp-dot"></b></div>
+          <em>cancelado</em>
+        </div>
       </div>
-      <span class="flow-arrow">›</span>
-      <div class="flow-node flow-node--win">
+      <div class="gp-node gp-node--win">
         <span class="fn-title">1ª resposta</span>
         <span class="fn-sub">vence a corrida</span>
       </div>
