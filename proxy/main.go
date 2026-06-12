@@ -55,29 +55,61 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
+// buildProviders turns the configured API keys + per-provider model lists into
+// one racer per (provider, model). Each provider's models come from
+// <PROVIDER>_MODELS (comma-separated); an empty list falls back to a sane default.
+// PROXY_FALLBACK_ORDER still controls the provider group order. Duplicate racers
+// (same Name()) are dropped so the sabotage map can't collide.
 func buildProviders() []provider.Provider {
 	var providers []provider.Provider
+	seen := map[string]bool{}
 	order := strings.Split(getEnv("PROXY_FALLBACK_ORDER", "openai,anthropic,gemini"), ",")
 	for _, name := range order {
 		switch strings.TrimSpace(name) {
 		case "openai":
 			if key := os.Getenv("OPENAI_API_KEY"); key != "" {
-				providers = append(providers, provider.NewOpenAI(key))
-				fmt.Println("provider loaded: openai")
+				for _, m := range parseModels(getEnv("OPENAI_MODELS", "gpt-4o")) {
+					providers = addRacer(providers, seen, provider.NewOpenAI(key, m))
+				}
 			}
 		case "anthropic":
 			if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-				providers = append(providers, provider.NewAnthropic(key))
-				fmt.Println("provider loaded: anthropic")
+				for _, m := range parseModels(getEnv("ANTHROPIC_MODELS", "claude-3-5-sonnet-20241022")) {
+					providers = addRacer(providers, seen, provider.NewAnthropic(key, m))
+				}
 			}
 		case "gemini":
 			if key := os.Getenv("GEMINI_API_KEY"); key != "" {
-				providers = append(providers, provider.NewGemini(key))
-				fmt.Println("provider loaded: gemini")
+				// GEMINI_MODEL (singular, legacy) seeds the default when GEMINI_MODELS is unset.
+				def := getEnv("GEMINI_MODEL", "gemini-2.5-flash")
+				for _, m := range parseModels(getEnv("GEMINI_MODELS", def)) {
+					providers = addRacer(providers, seen, provider.NewGemini(key, m))
+				}
 			}
 		}
 	}
 	return providers
+}
+
+// addRacer appends p unless a racer with the same Name() was already added.
+func addRacer(providers []provider.Provider, seen map[string]bool, p provider.Provider) []provider.Provider {
+	if seen[p.Name()] {
+		return providers
+	}
+	seen[p.Name()] = true
+	fmt.Println("provider loaded:", p.Name())
+	return append(providers, p)
+}
+
+// parseModels splits a comma-separated model list, dropping blanks.
+func parseModels(s string) []string {
+	var out []string
+	for _, m := range strings.Split(s, ",") {
+		if m = strings.TrimSpace(m); m != "" {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 func getEnv(key, fallback string) string {

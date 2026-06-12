@@ -26,7 +26,7 @@ func TestAnthropic_streams_content_chunks(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := provider.NewAnthropic("test-key")
+	p := provider.NewAnthropic("test-key", "claude-3-5-sonnet-20241022")
 	p.BaseURL = srv.URL
 
 	out := make(chan provider.Chunk, 10)
@@ -55,7 +55,7 @@ func TestAnthropic_returns_error_on_non_200(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := provider.NewAnthropic("test-key")
+	p := provider.NewAnthropic("test-key", "claude-3-5-sonnet-20241022")
 	p.BaseURL = srv.URL
 
 	out := make(chan provider.Chunk, 5)

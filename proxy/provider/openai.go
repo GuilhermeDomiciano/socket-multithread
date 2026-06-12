@@ -16,12 +16,35 @@ type OpenAI struct {
 	BaseURL string
 }
 
-func NewOpenAI(apiKey string) *OpenAI {
-	return &OpenAI{APIKey: apiKey, Model: "gpt-4o", BaseURL: "https://api.openai.com"}
+// openAIPrices is a rough USD/1k-token table so the "cheapest" strategy can tell
+// models of the same provider apart. Unknown models fall back to the gpt-4o rate.
+var openAIPrices = map[string]float64{
+	"gpt-4o":       0.005,
+	"gpt-4o-mini":  0.0006,
+	"gpt-4.1":      0.002,
+	"gpt-4.1-mini": 0.0004,
+	"o1":           0.015,
+	"o1-mini":      0.003,
 }
 
-func (o *OpenAI) Name() string             { return "openai" }
-func (o *OpenAI) CostPer1kTokens() float64 { return 0.005 }
+// NewOpenAI builds an OpenAI racer for a specific model. An empty model defaults
+// to gpt-4o.
+func NewOpenAI(apiKey, model string) *OpenAI {
+	if model == "" {
+		model = "gpt-4o"
+	}
+	return &OpenAI{APIKey: apiKey, Model: model, BaseURL: "https://api.openai.com"}
+}
+
+// Name is unique per model ("openai:gpt-4o") so multiple OpenAI models can race
+// as distinct lanes and address sabotage independently.
+func (o *OpenAI) Name() string { return "openai:" + o.Model }
+func (o *OpenAI) CostPer1kTokens() float64 {
+	if c, ok := openAIPrices[o.Model]; ok {
+		return c
+	}
+	return 0.005
+}
 
 type openAIReq struct {
 	Model     string   `json:"model"`

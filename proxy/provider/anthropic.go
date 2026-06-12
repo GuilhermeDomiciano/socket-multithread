@@ -16,12 +16,30 @@ type Anthropic struct {
 	BaseURL string
 }
 
-func NewAnthropic(apiKey string) *Anthropic {
-	return &Anthropic{APIKey: apiKey, Model: "claude-3-5-sonnet-20241022", BaseURL: "https://api.anthropic.com"}
+// anthropicPrices is a rough USD/1k-token table for the "cheapest" strategy.
+// Unknown models fall back to the claude-3-5-sonnet rate.
+var anthropicPrices = map[string]float64{
+	"claude-3-5-sonnet-20241022": 0.003,
+	"claude-3-5-haiku-20241022":  0.0008,
+	"claude-3-opus-20240229":     0.015,
 }
 
-func (a *Anthropic) Name() string             { return "anthropic" }
-func (a *Anthropic) CostPer1kTokens() float64 { return 0.003 }
+// NewAnthropic builds an Anthropic racer for a specific model. An empty model
+// defaults to claude-3-5-sonnet.
+func NewAnthropic(apiKey, model string) *Anthropic {
+	if model == "" {
+		model = "claude-3-5-sonnet-20241022"
+	}
+	return &Anthropic{APIKey: apiKey, Model: model, BaseURL: "https://api.anthropic.com"}
+}
+
+func (a *Anthropic) Name() string { return "anthropic:" + a.Model }
+func (a *Anthropic) CostPer1kTokens() float64 {
+	if c, ok := anthropicPrices[a.Model]; ok {
+		return c
+	}
+	return 0.003
+}
 
 type anthroReq struct {
 	Model     string      `json:"model"`

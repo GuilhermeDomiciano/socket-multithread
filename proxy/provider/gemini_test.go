@@ -22,7 +22,7 @@ func TestGemini_streams_content_chunks(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := provider.NewGemini("test-key")
+	p := provider.NewGemini("test-key", "gemini-2.5-flash")
 	p.BaseURL = srv.URL
 
 	out := make(chan provider.Chunk, 10)
@@ -50,7 +50,7 @@ func TestGemini_returns_error_on_non_200(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := provider.NewGemini("test-key")
+	p := provider.NewGemini("test-key", "gemini-2.5-flash")
 	p.BaseURL = srv.URL
 
 	out := make(chan provider.Chunk, 5)
@@ -67,5 +67,26 @@ func TestGemini_returns_error_on_non_200(t *testing.T) {
 	}
 	if !strings.Contains(last.Err.Error(), "quota exceeded") {
 		t.Errorf("expected error to surface the response body, got: %v", last.Err)
+	}
+}
+
+func TestGemini_name_unique_per_model(t *testing.T) {
+	a := provider.NewGemini("k", "gemini-2.5-flash")
+	b := provider.NewGemini("k", "gemini-2.5-pro")
+	if a.Name() != "gemini:gemini-2.5-flash" {
+		t.Errorf("expected gemini:gemini-2.5-flash, got %q", a.Name())
+	}
+	if a.Name() == b.Name() {
+		t.Errorf("distinct models must have distinct Name(), both %q", a.Name())
+	}
+	if !(a.CostPer1kTokens() < b.CostPer1kTokens()) {
+		t.Errorf("flash (%.5f) should cost less than pro (%.5f)", a.CostPer1kTokens(), b.CostPer1kTokens())
+	}
+}
+
+func TestGemini_empty_model_defaults(t *testing.T) {
+	p := provider.NewGemini("k", "")
+	if p.Name() != "gemini:gemini-2.5-flash" {
+		t.Errorf("empty model should default to gemini-2.5-flash, got %q", p.Name())
 	}
 }

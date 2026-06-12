@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -18,18 +17,32 @@ type Gemini struct {
 	BaseURL string
 }
 
-func NewGemini(apiKey string) *Gemini {
-	// gemini-2.0-flash has no free-tier quota on some projects (limit: 0).
-	// Default to gemini-2.5-flash, overridable via GEMINI_MODEL.
-	model := os.Getenv("GEMINI_MODEL")
+// geminiPrices is a rough USD/1k-token table for the "cheapest" strategy.
+// Unknown models fall back to the gemini-2.5-flash rate.
+var geminiPrices = map[string]float64{
+	"gemini-2.5-flash": 0.00015,
+	"gemini-2.5-pro":   0.00125,
+	"gemini-2.0-flash": 0.0001,
+	"gemini-1.5-flash": 0.000075,
+	"gemini-1.5-pro":   0.00125,
+}
+
+// NewGemini builds a Gemini racer for a specific model. An empty model defaults
+// to gemini-2.5-flash (gemini-2.0-flash has zero free-tier quota on some projects).
+func NewGemini(apiKey, model string) *Gemini {
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
 	return &Gemini{APIKey: apiKey, Model: model, BaseURL: "https://generativelanguage.googleapis.com"}
 }
 
-func (g *Gemini) Name() string             { return "gemini" }
-func (g *Gemini) CostPer1kTokens() float64 { return 0.00015 }
+func (g *Gemini) Name() string { return "gemini:" + g.Model }
+func (g *Gemini) CostPer1kTokens() float64 {
+	if c, ok := geminiPrices[g.Model]; ok {
+		return c
+	}
+	return 0.00015
+}
 
 type geminiReq struct {
 	Contents []geminiContent `json:"contents"`
