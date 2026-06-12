@@ -204,7 +204,7 @@ main { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 24px); max
   font-size: 13px; color: var(--ink-dim); text-transform: uppercase;
 }
 .cp-state {
-  font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  font-family: var(--mono); font-size: 13px; color: var(--ink-faint);
   word-break: break-word;
 }
 .cp-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
@@ -248,12 +248,12 @@ main { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 24px); max
 
 .lane-head { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .lane-name {
-  font-family: var(--disp); font-weight: 700; font-size: 17px;
+  font-family: var(--disp); font-weight: 700; font-size: 18px;
   letter-spacing: .03em; color: var(--ink); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
 .lane-badge {
-  font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; padding: 2px 9px; border-radius: 999px; width: max-content;
   background: var(--kerb); color: var(--ink-dim);
 }
@@ -301,7 +301,7 @@ html:not(.has-gsap) .car { transition: width .25s ease; }
 /* telemetry + sabotage column */
 .lane-tail { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .telemetry {
-  font-family: var(--mono); font-weight: 700; font-size: 18px;
+  font-family: var(--mono); font-weight: 700; font-size: 20px;
   color: var(--ink); font-variant-numeric: tabular-nums;
 }
 .telemetry .unit { font-size: 11px; color: var(--ink-faint); font-weight: 500; }
@@ -397,6 +397,111 @@ html:not(.has-gsap) .car { transition: width .25s ease; }
 .timeline li.key .msg { color: var(--ink); font-weight: 700; }
 .timeline li.bad .msg { color: #ff8a8a; }
 .timeline li.win .msg { color: var(--gold); }
+
+/* ============================================================
+   3b. BENCHMARK — Sequencial vs Paralelo
+   Same asphalt/yellow language; the hero swaps in via body.mode-benchmark.
+   ============================================================ */
+.bench {
+  display: none;
+  padding: 18px 20px 22px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--asphalt-2) 100%);
+  border: 1px solid var(--line); border-radius: var(--r);
+}
+body.mode-benchmark .bench   { display: block; }
+body.mode-benchmark .grid    { display: none; }   /* the race grid steps aside */
+body.mode-benchmark .answer  { display: none; }   /* no answer panel — the number is the star */
+body.mode-benchmark #cp-intent { opacity: .38; }  /* no intent classification in benchmark */
+
+.bench-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.bench-title {
+  font-family: var(--disp); font-weight: 900; font-style: italic;
+  font-size: clamp(22px, 2.6vw, 30px); letter-spacing: .04em; color: var(--ink);
+}
+.bench-title .vs { color: var(--yellow); font-style: normal; font-weight: 700; }
+.bench-hint { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); }
+
+.bench-tracks { display: flex; flex-direction: column; gap: 14px; }
+
+.bench-track {
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  background: var(--panel-2); border-left: 4px solid var(--ink-faint);
+}
+.bench-track.is-par { border-left-color: var(--yellow); }
+
+.bt-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.bt-titles { display: flex; flex-direction: column; gap: 2px; }
+.bt-label {
+  font-family: var(--disp); font-weight: 900; font-style: italic;
+  font-size: clamp(18px, 2vw, 24px); letter-spacing: .05em; color: var(--ink);
+}
+.bench-track.is-par .bt-label { color: var(--yellow); text-shadow: 0 0 18px rgba(244,194,13,.25); }
+.bt-sub { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.bt-clock {
+  font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: clamp(26px, 3.4vw, 40px); color: var(--ink); line-height: 1;
+}
+.bt-clock .unit { font-size: .42em; color: var(--ink-faint); font-weight: 500; margin-left: 2px; }
+.bench-track.is-par .bt-clock { color: var(--gold); }
+
+.bt-lanes { display: flex; flex-direction: column; gap: 9px; }
+
+/* one provider bar inside a track */
+.bbar { display: grid; grid-template-columns: 130px 1fr 92px; align-items: center; gap: 12px; }
+.bbar-name {
+  font-family: var(--disp); font-weight: 700; font-size: 15px; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bbar-track {
+  position: relative; height: 22px; border-radius: 6px; overflow: hidden;
+  background: linear-gradient(180deg, #1a1c21, #101216); border: 1px solid #000;
+}
+.bbar-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+  background: linear-gradient(90deg, var(--yellow-dim), var(--yellow));
+  transition: width .3s ease;
+}
+.bench-track:not(.is-par) .bbar-fill { background: linear-gradient(90deg, #44484f, #6b7079); }
+.bbar.bdone .bbar-fill { background: linear-gradient(90deg, var(--yellow-dim), var(--gold)); }
+.bench-track:not(.is-par) .bbar.bdone .bbar-fill { background: linear-gradient(90deg, #5b606b, #9aa0ab); }
+.bbar.bfail .bbar-fill { background: linear-gradient(90deg, #6e1c1c, var(--red)); width: 100% !important; }
+.bbar.bfail .bbar-name::after { content: " 💥"; }
+.bbar-ms {
+  font-family: var(--mono); font-weight: 700; font-size: 14px; text-align: right;
+  color: var(--ink-dim); font-variant-numeric: tabular-nums;
+}
+.bbar-ms .unit { font-size: 10px; color: var(--ink-faint); font-weight: 500; }
+
+/* the verdict — the big number */
+.bench-verdict {
+  margin-top: 18px; padding: 18px; border-radius: 10px; text-align: center;
+  background: #0a0b0e; border: 1px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  opacity: .5; transition: opacity .4s, box-shadow .4s, border-color .4s;
+}
+.bench-verdict.show {
+  opacity: 1; border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 42px rgba(255,216,59,.25);
+}
+.bv-factor {
+  font-family: var(--disp); font-weight: 900; font-style: italic;
+  font-size: clamp(48px, 9vw, 104px); line-height: .9; color: var(--gold);
+  text-shadow: 0 0 30px rgba(255,216,59,.4);
+}
+.bench-verdict.show .bv-factor { animation: factorpop .5s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes factorpop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.bv-factor .bv-x { font-size: .5em; color: var(--yellow); }
+.bv-caption {
+  font-family: var(--disp); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .14em; font-size: clamp(13px, 1.4vw, 16px); color: var(--ink-dim);
+}
+.bv-detail { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); }
+
+.bench-pill.on { box-shadow: 0 0 18px rgba(244,194,13,.35); }
+
+@media (max-width: 720px) {
+  .bbar { grid-template-columns: 92px 1fr 64px; gap: 8px; }
+}
 
 /* ---------- responsive ---------- */
 @media (max-width: 880px) {

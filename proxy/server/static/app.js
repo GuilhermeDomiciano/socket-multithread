@@ -15,6 +15,10 @@ let strategy = "auto";
 let eventCount = 0;
 const lanes = {}; // provider name -> { el, trail, car, badge, telem, chunks }
 
+/* benchmark mode state: one set of provider bars + one stopwatch per phase */
+const benchBars = { seq: {}, par: {} }; // phase -> { provider -> bar }
+const clocks = { seq: null, par: null }; // phase -> { raf, t0, el, stopped }
+
 const $ = (id) => document.getElementById(id);
 
 /* ---------- strategy pills ---------- */
@@ -66,14 +70,20 @@ async function startRun() {
   // transition in the no-GSAP fallback (avoids double-easing). Evaluated
   // here, after defer'd CDN scripts have loaded.
   document.documentElement.classList.toggle("has-gsap", !!window.gsap);
+  const isBench = strategy === "benchmark";
+  document.body.classList.toggle("mode-benchmark", isBench);
   resetUI();
   runBtn.disabled = true;
   document.body.classList.add("racing");
-  $("grid-hint").textContent = "luzes...";
+  ($(isBench ? "bench-hint" : "grid-hint")).textContent = "luzes...";
 
   await startLights();
 
-  $("grid-hint").textContent = "LARGADA!";
+  if (isBench) {
+    $("bench-hint").textContent = "medindo sequencial vs paralelo…";
+  } else {
+    $("grid-hint").textContent = "LARGADA!";
+  }
   openStream();
 }
 
@@ -95,6 +105,19 @@ function resetUI() {
   $("in-masked").textContent = "";
   $("response").textContent = "";
   $("resp-prov").textContent = "";
+
+  // benchmark reset
+  for (const phase of ["seq", "par"]) {
+    stopClock(phase);
+    clocks[phase] = null;
+    for (const k in benchBars[phase]) delete benchBars[phase][k];
+    $(phase === "seq" ? "lanes-seq" : "lanes-par").replaceChildren();
+    setClock($(phase === "seq" ? "clock-seq" : "clock-par"), 0);
+  }
+  const verdict = $("bench-verdict");
+  verdict.classList.remove("show");
+  $("bv-factor").textContent = "—";
+  $("bv-detail").textContent = "";
 }
 
 /* ---------- SSE ---------- */
@@ -125,8 +148,15 @@ function openStream() {
 function finishRun() {
   runBtn.disabled = false;
   document.body.classList.remove("racing");
+  // stop any clock still ticking (e.g. stream closed without a speedup event)
+  stopClock("seq");
+  stopClock("par");
   if ($("grid-hint").textContent === "LARGADA!") {
     $("grid-hint").textContent = "corrida encerrada";
+  }
+  if (document.body.classList.contains("mode-benchmark") &&
+      $("bench-hint").textContent.startsWith("medindo")) {
+    $("bench-hint").textContent = "medição encerrada";
   }
 }
 
@@ -248,9 +278,153 @@ function celebrate(lane) {
 }
 
 /* ============================================================
-   EVENT HANDLER — all 15 types
+   BENCHMARK — two-track stopwatch view (phase = "seq" | "par")
+   ============================================================ */
+
+/* render a stopwatch value (seconds) into el as "1.23 s" */
+function setClock(el, seconds) {
+  if (!el) return;
+  el.replaceChildren();
+  el.append(document.createTextNode(seconds.toFixed(2)));
+  const u = document.createElement("span");
+  u.className = "unit";
+  u.textContent = "s";
+  el.append(u);
+}
+
+/* start a live (requestAnimationFrame) stopwatch for a phase if not running */
+function ensureClock(phase) {
+  if (clocks[phase]) return;
+  const el = $(phase === "seq" ? "clock-seq" : "clock-par");
+  const t0 = performance.now();
+  const c = { t0, el, raf: 0, stopped: false };
+  const tick = () => {
+    if (c.stopped) return;
+    setClock(el, (performance.now() - t0) / 1000);
+    c.raf = requestAnimationFrame(tick);
+  };
+  clocks[phase] = c;
+  tick();
+}
+
+/* stop a phase stopwatch; if finalSeconds given, snap the display to it
+   (the server's measured value is authoritative). */
+function stopClock(phase, finalSeconds) {
+  const c = clocks[phase];
+  if (!c || c.stopped) {
+    if (c && finalSeconds != null) setClock(c.el, finalSeconds);
+    return;
+  }
+  c.stopped = true;
+  cancelAnimationFrame(c.raf);
+  if (finalSeconds != null) setClock(c.el, finalSeconds);
+}
+
+function ensureBenchBar(phase, name) {
+  const map = benchBars[phase];
+  if (map[name]) return map[name];
+
+  const row = document.createElement("div");
+  row.className = "bbar";
+  // static scaffolding only — server name injected via textContent below
+  row.innerHTML = `
+    <span class="bbar-name"></span>
+    <div class="bbar-track"><div class="bbar-fill"></div></div>
+    <span class="bbar-ms">—<span class="unit"> ms</span></span>`;
+  row.querySelector(".bbar-name").textContent = name;
+  $(phase === "seq" ? "lanes-seq" : "lanes-par").appendChild(row);
+
+  const bar = {
+    el: row,
+    fill: row.querySelector(".bbar-fill"),
+    ms: row.querySelector(".bbar-ms"),
+    chunks: 0,
+    t0: performance.now(),
+  };
+  map[name] = bar;
+  return bar;
+}
+
+function benchMove(bar, pct) {
+  bar.fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+}
+
+function benchMs(bar, ms) {
+  bar.ms.replaceChildren();
+  bar.ms.append(document.createTextNode(String(ms)));
+  const u = document.createElement("span");
+  u.className = "unit";
+  u.textContent = " ms";
+  bar.ms.append(u);
+}
+
+function handleBenchEvent(e) {
+  const phase = e.phase;
+  // The sequential phase ends the instant the parallel phase begins.
+  if (phase === "par") stopClock("seq");
+  ensureClock(phase);
+
+  switch (e.type) {
+    case "provider_start": {
+      ensureBenchBar(phase, e.provider);
+      log(e.t, `[${phase}] ${e.provider} largou`);
+      break;
+    }
+    case "chunk": {
+      const bar = ensureBenchBar(phase, e.provider);
+      bar.chunks++;
+      benchMove(bar, Math.min(90, bar.chunks * 12));
+      benchMs(bar, Math.round(performance.now() - bar.t0));
+      break;
+    }
+    case "done": {
+      const bar = ensureBenchBar(phase, e.provider);
+      benchMove(bar, 100);
+      bar.el.classList.add("bdone");
+      benchMs(bar, Math.round(performance.now() - bar.t0));
+      log(e.t, `[${phase}] ${e.provider} concluiu`);
+      break;
+    }
+    case "failed": {
+      const bar = ensureBenchBar(phase, e.provider);
+      bar.el.classList.add("bfail");
+      benchMs(bar, Math.round(performance.now() - bar.t0));
+      log(e.t, `[${phase}] ${e.provider} falhou: ${e.detail ?? ""}`, "bad");
+      break;
+    }
+    default:
+      log(e.t, `[${phase}] ${e.type}`);
+  }
+}
+
+/* victory flash for the benchmark verdict (guarded) */
+function benchCelebrate() {
+  if (window.confetti) {
+    const r = $("bench-verdict").getBoundingClientRect();
+    window.confetti({
+      particleCount: 110,
+      spread: 75,
+      startVelocity: 42,
+      origin: {
+        x: (r.left + r.width / 2) / window.innerWidth,
+        y: (r.top + r.height / 2) / window.innerHeight,
+      },
+      colors: ["#f4c20d", "#ffd83b", "#ffffff", "#111111"],
+    });
+  }
+}
+
+/* ============================================================
+   EVENT HANDLER — all event types
    ============================================================ */
 function handle(e) {
+  // Benchmark provider events are stamped with a phase ("seq"|"par") and route
+  // to the two-track view. Guard/blocked/speedup/error carry no phase and fall
+  // through to the normal handlers below.
+  if (e.phase === "seq" || e.phase === "par") {
+    handleBenchEvent(e);
+    return;
+  }
   switch (e.type) {
     // ---- ① Guard In ----
     case "guard_in": {
@@ -372,6 +546,32 @@ function handle(e) {
       const finding = e.content ? `${e.detail ?? ""} → ${e.content}` : (e.detail ?? "limpo");
       lightCheckpoint("cp-out", finding);
       log(e.t, `guard_out: ${finding}`);
+      break;
+    }
+
+    // ---- benchmark verdict ----
+    case "speedup": {
+      let p = {};
+      try { p = JSON.parse(e.content || "{}"); } catch (_) { p = {}; }
+      stopClock("seq", p.seq_ms != null ? p.seq_ms / 1000 : null);
+      stopClock("par", p.par_ms != null ? p.par_ms / 1000 : null);
+
+      const factorEl = $("bv-factor");
+      factorEl.replaceChildren();
+      if (typeof p.factor === "number" && p.factor > 0 && p.par_ms > 0) {
+        factorEl.append(document.createTextNode(p.factor >= 10 ? p.factor.toFixed(0) : p.factor.toFixed(1)));
+        const x = document.createElement("span");
+        x.className = "bv-x";
+        x.textContent = "×";
+        factorEl.append(x);
+        $("bench-verdict").classList.add("show");
+        benchCelebrate();
+      } else {
+        factorEl.textContent = "—";
+      }
+      $("bv-detail").textContent = e.detail || ""; // server text via textContent
+      $("bench-hint").textContent = "medição concluída";
+      log(e.t, e.detail || "speedup", "win");
       break;
     }
 

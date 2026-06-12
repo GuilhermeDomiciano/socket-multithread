@@ -49,6 +49,7 @@
         <button class="pill"    data-strategy="fastest"  role="radio" aria-checked="false">fastest</button>
         <button class="pill"    data-strategy="cheapest" role="radio" aria-checked="false">cheapest</button>
         <button class="pill"    data-strategy="fallback" role="radio" aria-checked="false">fallback</button>
+        <button class="pill bench-pill" data-strategy="benchmark" role="radio" aria-checked="false">benchmark</button>
       </div>
     </div>
 
@@ -101,6 +102,44 @@
       <span class="grid-hint" id="grid-hint">aperte RUN para largar</span>
     </div>
     <div id="lanes" class="lanes"></div>
+  </section>
+
+  <!-- 3b. BENCHMARK — Sequencial vs Paralelo (hero no modo benchmark) -->
+  <section class="bench" aria-label="Benchmark Sequencial vs Paralelo">
+    <div class="bench-head">
+      <span class="bench-title">SEQUENCIAL <span class="vs">vs</span> PARALELO</span>
+      <span class="bench-hint" id="bench-hint">aperte RUN para medir o ganho</span>
+    </div>
+
+    <div class="bench-tracks">
+      <div class="bench-track" id="bt-seq">
+        <div class="bt-head">
+          <div class="bt-titles">
+            <span class="bt-label">SEQUENCIAL</span>
+            <span class="bt-sub">um após o outro &middot; soma das latências</span>
+          </div>
+          <span class="bt-clock" id="clock-seq">0.00<span class="unit">s</span></span>
+        </div>
+        <div class="bt-lanes" id="lanes-seq"></div>
+      </div>
+
+      <div class="bench-track is-par" id="bt-par">
+        <div class="bt-head">
+          <div class="bt-titles">
+            <span class="bt-label">PARALELO</span>
+            <span class="bt-sub">todos de uma vez &middot; o mais lento</span>
+          </div>
+          <span class="bt-clock" id="clock-par">0.00<span class="unit">s</span></span>
+        </div>
+        <div class="bt-lanes" id="lanes-par"></div>
+      </div>
+    </div>
+
+    <div class="bench-verdict" id="bench-verdict" aria-live="polite">
+      <span class="bv-factor" id="bv-factor">—</span>
+      <span class="bv-caption">mais rápido com paralelismo</span>
+      <span class="bv-detail" id="bv-detail"></span>
+    </div>
   </section>
 
   <!-- 4. AI ANSWER PANEL -->
