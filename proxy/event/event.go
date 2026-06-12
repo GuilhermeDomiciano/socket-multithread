@@ -13,6 +13,7 @@ type Event struct {
 	T        int64  `json:"t"`
 	Content  string `json:"content,omitempty"`
 	Detail   string `json:"detail,omitempty"`
+	Phase    string `json:"phase,omitempty"` // "seq"|"par" durante benchmark; vazio nos demais modos
 }
 
 // Sink receives events. Implementations must be safe for concurrent Emit calls.

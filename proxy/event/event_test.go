@@ -1,11 +1,24 @@
 package event_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/domiciano/llm-proxy/event"
 )
+
+func TestEvent_phase_omitempty(t *testing.T) {
+	b, _ := json.Marshal(event.Event{Type: "chunk"})
+	if strings.Contains(string(b), "phase") {
+		t.Errorf("phase deve sumir quando vazio: %s", b)
+	}
+	b2, _ := json.Marshal(event.Event{Type: "chunk", Phase: "seq"})
+	if !strings.Contains(string(b2), `"phase":"seq"`) {
+		t.Errorf("phase deveria aparecer: %s", b2)
+	}
+}
 
 func TestChanSink_emits_in_order(t *testing.T) {
 	done := make(chan struct{})
