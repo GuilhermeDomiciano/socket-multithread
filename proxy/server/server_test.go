@@ -69,6 +69,23 @@ func TestHandleQuery_blocks_injection_with_403(t *testing.T) {
 	}
 }
 
+func TestApresentacao_served(t *testing.T) {
+	mux := server.New(newTestRouter([]string{"hi"}), nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/apresentacao/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /apresentacao/ = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("Content-Type = %q, want text/html", ct)
+	}
+	if !strings.Contains(w.Body.String(), "Smart LLM Gateway") {
+		t.Fatal("body does not contain presentation title")
+	}
+}
+
 func TestHandleOpenAICompat_streaming(t *testing.T) {
 	mux := server.New(newTestRouter([]string{"Hi"}), nil, nil)
 	body := `{"messages":[{"role":"user","content":"hello"}],"stream":true}`
