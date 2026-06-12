@@ -1,19 +1,24 @@
+/* ============================================================
+   PARALLEL GP — dashboard behavior
+   SSE consumer for /viz/stream + start-light launch + sabotage.
+
+   HARD RULES (see task brief):
+   - Every server string reaches the DOM only via textContent or esc().
+     Never innerHTML with interpolated server data.
+   - GSAP and confetti are OPTIONAL. Guard every use; pure-CSS fallback
+     must keep the dashboard fully functional with no CDN.
+   ============================================================ */
+
+"use strict";
+
 let strategy = "auto";
-const lanes = {}; // provider name -> { el, fill, badge, chunks }
+let eventCount = 0;
+const lanes = {}; // provider name -> { el, trail, car, badge, telem, chunks, done }
 
-document.querySelectorAll(".pill").forEach(p => {
-  p.addEventListener("click", () => {
-    document.querySelectorAll(".pill").forEach(x => x.classList.remove("on"));
-    p.classList.add("on");
-    strategy = p.dataset.strategy;
-  });
-});
+const $ = (id) => document.getElementById(id);
 
-document.getElementById("run").addEventListener("click", run);
-
-// esc escapes server-provided strings before they touch innerHTML.
-// Inputs here are self-controlled (provider names, our own error text), but
-// escaping keeps the timeline XSS-safe regardless.
+/* esc() escapes server strings for the (rare) cases we build markup.
+   We still prefer textContent everywhere we can. */
 function esc(s) {
   return String(s == null ? "" : s)
     .replaceAll("&", "&amp;")
@@ -21,161 +26,384 @@ function esc(s) {
     .replaceAll(">", "&gt;");
 }
 
-function run() {
-  // reset
-  document.getElementById("lanes").innerHTML = "";
-  document.getElementById("timeline").innerHTML = "";
-  for (const k in lanes) delete lanes[k];
-  ["st-in", "st-intent", "st-race", "st-out"].forEach(id => {
-    const el = document.getElementById(id);
-    el.classList.remove("ok", "bad");
-    el.querySelector(".sv").textContent = "—";
-    const m = el.querySelector(".masked");
-    if (m) m.textContent = "";
+/* ---------- strategy pills ---------- */
+$("pills").addEventListener("click", (ev) => {
+  const pill = ev.target.closest(".pill");
+  if (!pill) return;
+  document.querySelectorAll(".pill").forEach((p) => {
+    p.classList.remove("on");
+    p.setAttribute("aria-checked", "false");
   });
-  document.getElementById("response").textContent = "";
-  document.getElementById("resp-prov").textContent = "";
+  pill.classList.add("on");
+  pill.setAttribute("aria-checked", "true");
+  strategy = pill.dataset.strategy;
+});
 
-  const q = encodeURIComponent(document.getElementById("q").value);
+/* ---------- RUN / start-light gantry ---------- */
+const runBtn = $("run");
+runBtn.addEventListener("click", startRun);
+
+/* Plays the red-light sequence, flashes green ("lights out"), then resolves. */
+function startLights() {
+  return new Promise((resolve) => {
+    const g = runBtn;
+    g.classList.remove("seq-1", "seq-2", "seq-3", "go");
+    const steps = ["seq-1", "seq-2", "seq-3"];
+    let i = 0;
+    const step = () => {
+      if (i < steps.length) {
+        g.classList.add(steps[i]);
+        i++;
+        setTimeout(step, 450);
+      } else {
+        // lights out — go green
+        g.classList.remove("seq-1", "seq-2", "seq-3");
+        g.classList.add("go");
+        setTimeout(() => {
+          g.classList.remove("go");
+          resolve();
+        }, 500);
+      }
+    };
+    step();
+  });
+}
+
+async function startRun() {
+  if (runBtn.disabled) return;
+  resetUI();
+  runBtn.disabled = true;
+  document.body.classList.add("racing");
+  $("grid-hint").textContent = "luzes...";
+
+  await startLights();
+
+  $("grid-hint").textContent = "LARGADA!";
+  openStream();
+}
+
+/* ---------- reset between runs ---------- */
+function resetUI() {
+  $("lanes").replaceChildren();
+  $("timeline").replaceChildren();
+  for (const k in lanes) delete lanes[k];
+  eventCount = 0;
+  updateLogCount();
+
+  for (const id of ["cp-in", "cp-intent", "cp-race", "cp-out"]) {
+    const el = $(id);
+    el.classList.remove("lit", "blocked");
+    const st = el.querySelector(".cp-state");
+    st.textContent = st.dataset.default;
+  }
+  $("in-chips").replaceChildren();
+  $("in-masked").textContent = "";
+  $("response").textContent = "";
+  $("resp-prov").textContent = "";
+}
+
+/* ---------- SSE ---------- */
+function openStream() {
+  const q = encodeURIComponent($("q").value);
   const es = new EventSource(`/viz/stream?q=${q}&strategy=${strategy}`);
 
   es.onmessage = (msg) => {
-    if (msg.data === "[DONE]") { es.close(); return; }
-    const e = JSON.parse(msg.data);
+    if (msg.data === "[DONE]") {
+      es.close();
+      finishRun();
+      return;
+    }
+    let e;
+    try {
+      e = JSON.parse(msg.data);
+    } catch (_) {
+      return;
+    }
     handle(e);
   };
-  es.onerror = () => es.close();
+  es.onerror = () => {
+    es.close();
+    finishRun();
+  };
 }
 
+function finishRun() {
+  runBtn.disabled = false;
+  document.body.classList.remove("racing");
+  if ($("grid-hint").textContent === "LARGADA!") {
+    $("grid-hint").textContent = "corrida encerrada";
+  }
+}
+
+/* ---------- checkpoints ---------- */
+function lightCheckpoint(id, stateText) {
+  const el = $(id);
+  el.classList.add("lit");
+  if (stateText != null) el.querySelector(".cp-state").textContent = stateText;
+}
+
+/* ---------- lanes ---------- */
 function ensureLane(name) {
   if (lanes[name]) return lanes[name];
+
   const wrap = document.createElement("div");
-  wrap.className = "lane";
+  wrap.className = "lane running";
+
+  // Static scaffolding only (no server data) — innerHTML is safe here.
   wrap.innerHTML = `
-    <span class="pname">${esc(name)}</span>
-    <div class="track"><div class="fill"></div></div>
-    <span class="badge">running</span>
-    <span class="sab">
-      <button data-mode="fail">💥</button>
-      <button data-mode="delay">⏱ +5s</button>
-      <button data-mode="clear">♻️</button>
-    </span>`;
-  document.getElementById("lanes").appendChild(wrap);
+    <div class="lane-head">
+      <span class="lane-name"></span>
+      <span class="lane-badge">running</span>
+    </div>
+    <div class="track">
+      <div class="trail"></div>
+      <div class="car"><span class="car-glyph">🏎️</span></div>
+    </div>
+    <div class="lane-tail">
+      <span class="telemetry">—<span class="unit"> ms</span></span>
+      <span class="sab">
+        <button type="button" data-mode="fail"  title="kill">💥</button>
+        <button type="button" data-mode="delay" title="+5s">⏱ +5s</button>
+        <button type="button" data-mode="clear" title="reset">♻️</button>
+      </span>
+    </div>`;
+
+  // server-provided name in via textContent ONLY
+  wrap.querySelector(".lane-name").textContent = name;
+
+  $("lanes").appendChild(wrap);
+
   const lane = {
     el: wrap,
-    fill: wrap.querySelector(".fill"),
-    badge: wrap.querySelector(".badge"),
+    trail: wrap.querySelector(".trail"),
+    car: wrap.querySelector(".car"),
+    badge: wrap.querySelector(".lane-badge"),
+    telem: wrap.querySelector(".telemetry"),
     chunks: 0,
+    done: false,
+    t0: performance.now(),
   };
-  wrap.querySelectorAll(".sab button").forEach(b => {
+
+  wrap.querySelectorAll(".sab button").forEach((b) => {
     b.addEventListener("click", () => sabotage(name, b.dataset.mode));
   });
+
   lanes[name] = lane;
   return lane;
 }
 
-function tl(text) {
-  const t = document.getElementById("timeline");
-  t.innerHTML += text + "<br>";
+/* advance a car to pct (0..100). GSAP if present, else CSS transition. */
+function moveCar(lane, pct) {
+  const target = Math.max(0, Math.min(100, pct));
+  lane.trail.style.width = target + "%";
+  if (window.gsap) {
+    window.gsap.to(lane.car, { width: target + "%", duration: 0.35, ease: "power2.out" });
+  } else {
+    lane.car.style.width = target + "%"; // CSS transition handles the easing
+  }
 }
 
-function setStage(id, text, cls) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.querySelector(".sv").textContent = text;
-  if (cls) el.classList.add(cls);
+function setTelemetry(lane, ms) {
+  lane.telem.replaceChildren();
+  lane.telem.append(document.createTextNode(String(ms)));
+  const unit = document.createElement("span");
+  unit.className = "unit";
+  unit.textContent = " ms";
+  lane.telem.append(unit);
 }
 
+/* ---------- race log ---------- */
+function log(t, msg, kind) {
+  const li = document.createElement("li");
+  if (kind) li.classList.add(kind);
+  const ts = document.createElement("span");
+  ts.className = "ts";
+  ts.textContent = `t=${t == null ? "?" : t}ms`;
+  const m = document.createElement("span");
+  m.className = "msg";
+  m.textContent = msg; // server text via textContent
+  li.append(ts, m);
+  const tl = $("timeline");
+  tl.appendChild(li);
+  tl.scrollTop = tl.scrollHeight;
+  eventCount++;
+  updateLogCount();
+}
+function updateLogCount() {
+  $("log-count").textContent = `${eventCount} evento${eventCount === 1 ? "" : "s"}`;
+}
+
+/* ---------- win effects (guarded) ---------- */
+function celebrate(lane) {
+  if (window.confetti) {
+    const r = lane.el.getBoundingClientRect();
+    window.confetti({
+      particleCount: 90,
+      spread: 70,
+      startVelocity: 38,
+      origin: {
+        x: (r.left + r.width * 0.85) / window.innerWidth,
+        y: (r.top + r.height / 2) / window.innerHeight,
+      },
+      colors: ["#f4c20d", "#ffd83b", "#ffffff", "#111111"],
+    });
+  }
+  if (window.gsap) {
+    window.gsap.fromTo(lane.el, { scale: 0.99 }, { scale: 1, duration: 0.4, ease: "back.out(2)" });
+  }
+}
+
+/* ============================================================
+   EVENT HANDLER — all 15 types
+   ============================================================ */
 function handle(e) {
   switch (e.type) {
-    case "guard_in":
-      setStage("st-in", `mascarado: ${esc(e.detail)} ${esc(e.content)}`, "ok");
-      tl(`t=${e.t}ms · guard_in: ${esc(e.detail)} → ${esc(e.content)}`);
+    // ---- ① Guard In ----
+    case "guard_in": {
+      lightCheckpoint("cp-in", "PII mascarada");
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      // detail = PII type, content = placeholder; textContent keeps it XSS-safe
+      chip.textContent = `${e.detail ?? "?"} → ${e.content ?? ""}`;
+      $("in-chips").appendChild(chip);
+      log(e.t, `guard_in: ${e.detail ?? ""} → ${e.content ?? ""}`);
       break;
+    }
     case "masked_prompt": {
-      const stIn = document.getElementById("st-in");
-      const m = stIn.querySelector(".masked");
-      if (m) m.textContent = "prompt→LLM: " + e.content; // textContent is XSS-safe
-      if (!stIn.classList.contains("bad")) stIn.classList.add("ok");
+      $("in-masked").textContent = "→ LLM: " + (e.content ?? "");
+      lightCheckpoint("cp-in", null);
       break;
     }
-    case "blocked":
-      setStage("st-in", `BLOQUEADO: ${esc(e.detail)}`, "bad");
-      tl(`<b>t=${e.t}ms</b> · BLOQUEADO: ${esc(e.detail)}`);
-      break;
-    case "intent":
-      setStage("st-intent", esc(e.detail), "ok");
-      tl(`t=${e.t}ms · intent: ${esc(e.detail)}`);
-      break;
-    case "guard_out":
-      setStage("st-out", `${esc(e.detail)} ${esc(e.content)}`, "ok");
-      tl(`t=${e.t}ms · guard_out: ${esc(e.detail)}`);
-      break;
-    case "out_chunk": {
-      const rp = document.getElementById("resp-prov");
-      if (!rp.textContent && e.provider) rp.textContent = "(" + e.provider + ")";
-      // textContent is XSS-safe; the answer is also already PII-scrubbed.
-      document.getElementById("response").textContent += e.content;
+    case "blocked": {
+      const el = $("cp-in");
+      el.classList.remove("lit");
+      el.classList.add("blocked");
+      el.querySelector(".cp-state").textContent = `BLOQUEADO: ${e.detail ?? ""}`;
+      log(e.t, `BLOQUEADO: ${e.detail ?? ""}`, "bad");
+      $("grid-hint").textContent = "corrida bloqueada na largada";
       break;
     }
-    case "start":
-      tl(`<b>t=${e.t}ms</b> · start (${esc(e.detail)})`);
-      setStage("st-race", "correndo...", "ok");
+
+    // ---- ② Intent ----
+    case "intent": {
+      lightCheckpoint("cp-intent", e.detail ?? "");
+      log(e.t, `intent: ${e.detail ?? ""}`);
       break;
+    }
+
+    // ---- ③ Race ----
+    case "start": {
+      lightCheckpoint("cp-race", `estratégia: ${e.detail ?? ""}`);
+      log(e.t, `start (${e.detail ?? ""})`, "key");
+      // visual launch reinforcement (lights already played on click)
+      if (window.gsap) {
+        window.gsap.fromTo("#cp-race", { backgroundColor: "rgba(244,194,13,.25)" },
+          { backgroundColor: "rgba(244,194,13,.06)", duration: 0.8 });
+      }
+      break;
+    }
+    case "decision": {
+      log(e.t, `decisão: ${e.detail ?? ""}`);
+      break;
+    }
     case "provider_start": {
       ensureLane(e.provider);
-      tl(`t=${e.t}ms · ${esc(e.provider)} iniciou`);
+      log(e.t, `${e.provider} entrou na pista`);
       break;
     }
     case "chunk": {
       const lane = ensureLane(e.provider);
       lane.chunks++;
-      const w = Math.min(90, lane.chunks * 12);
-      lane.fill.style.width = w + "%";
+      moveCar(lane, Math.min(90, lane.chunks * 12));
+      setTelemetry(lane, Math.round(performance.now() - lane.t0));
       break;
     }
     case "won": {
       const lane = ensureLane(e.provider);
+      lane.el.classList.remove("running", "cancelled", "failed", "dnf");
       lane.el.classList.add("won");
-      lane.fill.style.width = "100%";
-      lane.badge.textContent = "WON";
-      tl(`<b>t=${e.t}ms</b> · ${esc(e.provider)} venceu`);
+      lane.badge.textContent = "WON 🏁";
+      moveCar(lane, 100);
+      setTelemetry(lane, Math.round(performance.now() - lane.t0));
+      celebrate(lane);
+      log(e.t, `${e.provider} VENCEU`, "win");
+      $("grid-hint").textContent = `vencedor: ${e.provider}`;
       break;
     }
     case "cancelled": {
       const lane = ensureLane(e.provider);
-      lane.el.classList.add("cancelled");
-      lane.badge.textContent = "cancelled ❌";
-      tl(`t=${e.t}ms · ${esc(e.provider)} cancelado (ctx)`);
+      if (!lane.el.classList.contains("won")) {
+        lane.el.classList.remove("running");
+        lane.el.classList.add("cancelled");
+        lane.badge.textContent = "CANCELADO";
+      }
+      log(e.t, `${e.provider} cancelado (context cancel)`);
       break;
     }
     case "failed": {
       const lane = ensureLane(e.provider);
+      lane.el.classList.remove("running");
       lane.el.classList.add("failed");
-      lane.badge.textContent = "failed";
-      tl(`t=${e.t}ms · ${esc(e.provider)} falhou: ${esc(e.detail || "")}`);
+      lane.badge.textContent = "💥 FALHOU";
+      // replace car glyph with explosion, no server data
+      const glyph = lane.car.querySelector(".car-glyph");
+      if (glyph) glyph.textContent = "💥";
+      log(e.t, `${e.provider} falhou: ${e.detail ?? ""}`, "bad");
       break;
     }
-    case "decision":
-      tl(`t=${e.t}ms · decisão: ${esc(e.detail)}`);
-      break;
     case "done": {
       const lane = ensureLane(e.provider);
-      lane.fill.style.width = "100%";
-      if (!lane.el.classList.contains("won")) lane.el.classList.add("won");
-      tl(`<b>t=${e.t}ms</b> · ${esc(e.provider)} concluiu`);
+      lane.done = true;
+      moveCar(lane, 100);
+      if (!lane.el.classList.contains("won") &&
+          !lane.el.classList.contains("failed") &&
+          !lane.el.classList.contains("cancelled")) {
+        lane.el.classList.remove("running");
+        lane.el.classList.add("done");
+        lane.badge.textContent = "FINISH";
+      }
+      setTelemetry(lane, Math.round(performance.now() - lane.t0));
+      log(e.t, `${e.provider} concluiu (100%)`);
       break;
     }
-    case "error":
-      tl(`<b>t=${e.t}ms</b> · ERRO: ${esc(e.detail)}`);
+
+    // ---- ④ Guard Out + streamed answer ----
+    case "out_chunk": {
+      const rp = $("resp-prov");
+      if (!rp.textContent && e.provider) rp.textContent = e.provider;
+      // answer is already PII-scrubbed by the proxy; textContent regardless
+      $("response").append(document.createTextNode(e.content ?? ""));
       break;
+    }
+    case "guard_out": {
+      const finding = e.content ? `${e.detail ?? ""} → ${e.content}` : (e.detail ?? "limpo");
+      lightCheckpoint("cp-out", finding);
+      log(e.t, `guard_out: ${finding}`);
+      break;
+    }
+
+    // ---- global error / DNF ----
+    case "error": {
+      $("cp-race").classList.add("blocked");
+      $("cp-race").querySelector(".cp-state").textContent = "DNF — corrida abortada";
+      log(e.t, `DNF — corrida abortada: ${e.detail ?? ""}`, "bad");
+      $("grid-hint").textContent = "DNF — corrida abortada";
+      break;
+    }
+
+    default:
+      // unknown type — keep the demo robust, just log it
+      log(e.t, `evento: ${e.type}`);
   }
 }
 
+/* ---------- sabotage ---------- */
 function sabotage(provider, mode) {
   fetch("/viz/sabotage", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ provider, mode, delay_ms: 5000 }),
+  }).catch(() => {
+    /* sabotage is fire-and-forget; ignore network errors in the demo */
   });
 }

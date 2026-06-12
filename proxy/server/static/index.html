@@ -3,65 +3,122 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LLM Proxy — Corrida Paralela</title>
-<style>
-  :root { color-scheme: dark; }
-  body { margin:0; font-family: system-ui, sans-serif; background:#0f0f12; color:#eee; padding:24px; }
-  h1 { font-size:18px; margin:0 0 16px; }
-  .bar-top { display:flex; gap:8px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
-  #q { flex:1; min-width:240px; padding:8px 10px; border-radius:6px; border:1px solid #444; background:#1a1a1a; color:#eee; }
-  .pill { font-size:12px; padding:5px 12px; border-radius:14px; border:1px solid #555; cursor:pointer; user-select:none; }
-  .pill.on { background:#10a37f; color:#fff; border-color:#10a37f; }
-  #run { padding:8px 16px; border-radius:6px; border:0; background:#10a37f; color:#fff; font-weight:700; cursor:pointer; }
-  .lane { display:flex; align-items:center; gap:10px; margin:10px 0; }
-  .lane .pname { width:90px; font-size:13px; font-weight:700; }
-  .track { position:relative; flex:1; height:28px; background:#ffffff14; border-radius:6px; overflow:hidden; }
-  .fill { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:6px; transition:width .12s linear; background:#666; }
-  .lane.won .fill { background:#10a37f; }
-  .lane.cancelled .fill { background:#555; opacity:.35; }
-  .lane.failed .fill { background:#c0392b; }
-  .badge { font-size:11px; padding:2px 8px; border-radius:10px; background:#333; color:#9bd; min-width:80px; text-align:center; }
-  .sab button { font-size:12px; padding:3px 8px; border-radius:5px; border:1px solid #555; background:#222; color:#ddd; cursor:pointer; }
-  #response { margin-top:6px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:13px; line-height:1.6; min-height:48px; white-space:pre-wrap; word-break:break-word; }
-  #resp-prov { color:#10a37f; text-transform:none; letter-spacing:0; }
-  #timeline { margin-top:18px; padding:10px 12px; background:#ffffff10; border-radius:6px; font-size:12px; line-height:1.7; min-height:60px; }
-  #timeline b { color:#9bd; }
-  .label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#888; }
-  #pipeline { display:flex; gap:8px; margin:14px 0; flex-wrap:wrap; }
-  .stage { flex:1; min-width:160px; background:#ffffff10; border-radius:6px; padding:8px 10px; font-size:12px; border-left:3px solid #555; }
-  .stage.ok { border-left-color:#10a37f; }
-  .stage.bad { border-left-color:#c0392b; }
-  .stage .sv { color:#9bd; }
-  .stage .masked { margin-top:4px; font-size:11px; color:#bbb; word-break:break-word; }
-</style>
+<title>PARALLEL GP — LLM Proxy Telemetry</title>
+
+<!-- Distinctive type: condensed racing display + monospace telemetry -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Archivo+Narrow:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/styles.css">
+
+<!-- Optional libs (CDN) with MANDATORY runtime fallback in app.js. -->
+<!-- If blocked (no internet), window.gsap / window.confetti are simply undefined and CSS takes over. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
 </head>
 <body>
-  <h1>LLM Proxy — Corrida Paralela (fan-out · first-response-wins · context cancel)</h1>
+<div class="grain" aria-hidden="true"></div>
 
-  <div class="bar-top">
-    <input id="q" placeholder="Pergunte algo..." value="Explique goroutines em uma frase">
-    <span class="pill on" data-strategy="auto">auto</span>
-    <span class="pill" data-strategy="fastest">fastest</span>
-    <span class="pill" data-strategy="cheapest">cheapest</span>
-    <span class="pill" data-strategy="fallback">fallback</span>
-    <button id="run">Run</button>
+<header class="masthead">
+  <div class="marque">
+    <span class="flag-tile" aria-hidden="true"></span>
+    <div>
+      <h1>PARALLEL&nbsp;GP</h1>
+      <p class="subtitle">LLM Proxy &middot; fan-out &middot; first-response-wins &middot; context-cancel</p>
+    </div>
   </div>
-
-  <div id="pipeline">
-    <div class="stage" id="st-in"><b>① Guard In</b> <span class="sv">—</span><div class="masked"></div></div>
-    <div class="stage" id="st-intent"><b>② Intent</b> <span class="sv">—</span></div>
-    <div class="stage" id="st-race"><b>③ Race</b> <span class="sv">—</span></div>
-    <div class="stage" id="st-out"><b>④ Guard Out</b> <span class="sv">—</span></div>
+  <div class="rev" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
+</header>
 
-  <div id="lanes"></div>
+<main>
+  <!-- 1. START LINE / CONTROL BAR -->
+  <section class="startline" aria-label="Linha de largada">
+    <div class="field">
+      <label for="q">PROMPT</label>
+      <input id="q" type="text" autocomplete="off" spellcheck="false"
+             value="Explique goroutines em uma frase">
+    </div>
 
-  <div class="label">resposta da IA <span id="resp-prov"></span></div>
-  <div id="response"></div>
+    <div class="field">
+      <label>ESTRATÉGIA</label>
+      <div class="pills" id="pills" role="radiogroup" aria-label="Estratégia">
+        <button class="pill on" data-strategy="auto"     role="radio" aria-checked="true">auto</button>
+        <button class="pill"    data-strategy="fastest"  role="radio" aria-checked="false">fastest</button>
+        <button class="pill"    data-strategy="cheapest" role="radio" aria-checked="false">cheapest</button>
+        <button class="pill"    data-strategy="fallback" role="radio" aria-checked="false">fallback</button>
+      </div>
+    </div>
 
-  <div class="label">timeline</div>
-  <div id="timeline"></div>
+    <button id="run" class="gantry" aria-label="Largar a corrida">
+      <span class="lights" aria-hidden="true">
+        <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+      </span>
+      <span class="gantry-label">RUN</span>
+    </button>
+  </section>
 
-  <script src="/app.js"></script>
+  <!-- 2. PIPELINE RAIL -->
+  <section class="rail" aria-label="Pipeline">
+    <div class="checkpoint" id="cp-in">
+      <span class="cp-num">①</span>
+      <div class="cp-body">
+        <span class="cp-title">GUARD IN</span>
+        <span class="cp-state" data-default="aguardando">aguardando</span>
+        <div class="cp-chips" id="in-chips"></div>
+        <div class="cp-masked" id="in-masked"></div>
+      </div>
+    </div>
+    <div class="checkpoint" id="cp-intent">
+      <span class="cp-num">②</span>
+      <div class="cp-body">
+        <span class="cp-title">INTENT</span>
+        <span class="cp-state" data-default="aguardando">aguardando</span>
+      </div>
+    </div>
+    <div class="checkpoint" id="cp-race">
+      <span class="cp-num">③</span>
+      <div class="cp-body">
+        <span class="cp-title">RACE</span>
+        <span class="cp-state" data-default="aguardando">aguardando</span>
+      </div>
+    </div>
+    <div class="checkpoint" id="cp-out">
+      <span class="cp-num">④</span>
+      <div class="cp-body">
+        <span class="cp-title">GUARD OUT</span>
+        <span class="cp-state" data-default="aguardando">aguardando</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. RACE LANES (hero) -->
+  <section class="grid" aria-label="Pista">
+    <div class="grid-head">
+      <span class="grid-title">GRID</span>
+      <span class="grid-hint" id="grid-hint">aperte RUN para largar</span>
+    </div>
+    <div id="lanes" class="lanes"></div>
+  </section>
+
+  <!-- 4. AI ANSWER PANEL -->
+  <section class="answer" aria-label="Resposta da IA">
+    <div class="answer-head">
+      <span class="answer-title">RESPOSTA</span>
+      <span class="answer-prov" id="resp-prov"></span>
+    </div>
+    <div id="response" class="answer-body" aria-live="polite"></div>
+  </section>
+
+  <!-- 5. COLLAPSIBLE RACE LOG -->
+  <details class="log" id="log-wrap" open>
+    <summary><span class="log-title">RACE LOG</span><span class="log-meta" id="log-count">0 eventos</span></summary>
+    <ol id="timeline" class="timeline"></ol>
+  </details>
+</main>
+
+<script src="/app.js" defer></script>
 </body>
 </html>
