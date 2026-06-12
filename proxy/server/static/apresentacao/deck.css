@@ -669,7 +669,7 @@ body.js .rv.in { opacity: 1; transform: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   body.js .rv { opacity: 1; transform: none; }
-  .rl-fill { width: 90%; }
+  .rl-fill { width: 100%; }   /* vencedor cruza a linha mesmo sem animação */
   .rlane--lose1 .rl-fill { width: 58%; }
   .rlane--lose2 .rl-fill { width: 41%; }
   .rl-tag { opacity: 1; }

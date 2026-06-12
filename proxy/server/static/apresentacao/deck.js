@@ -11,7 +11,10 @@
 
   let current = 0;
 
-  // Seção ativa → HUD + dispara animações de diagrama (.seen)
+  // Seção ativa → HUD + dispara animações de diagrama (.seen).
+  // rootMargin de -50% marca ativa a seção que cruza o CENTRO do viewport:
+  // threshold 0.5 nunca dispararia para seções mais altas que 2× o viewport
+  // (zoom alto no projetor), travando HUD e navegação por teclado.
   const activeObs = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
@@ -20,7 +23,7 @@
       fill.style.width = `${((current + 1) / laps.length) * 100}%`;
       e.target.classList.add('seen');
     }
-  }, { threshold: 0.5 });
+  }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
   laps.forEach((s) => activeObs.observe(s));
 
   // Reveal com stagger (uma vez só por elemento)
@@ -33,11 +36,16 @@
   }, { threshold: 0.25 });
   document.querySelectorAll('.rv').forEach((el) => revealObs.observe(el));
 
-  // Navegação por teclado
-  const go = (i) => laps[Math.max(0, Math.min(laps.length - 1, i))]
-    .scrollIntoView({ behavior: 'smooth' });
+  // Navegação por teclado. current é atualizado aqui (otimista) e não só
+  // pelo observer — teclas em sequência rápida calculariam do lap errado.
+  const go = (i) => {
+    current = Math.max(0, Math.min(laps.length - 1, i));
+    laps[current].scrollIntoView({ behavior: 'smooth' });
+  };
   document.addEventListener('keydown', (ev) => {
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return; // Cmd+← = Back etc.
     if (ev.target.matches('input, textarea')) return;
+    if (!overlay.hidden && ev.key !== 'Escape' && ev.key !== 'g' && ev.key !== 'G') return;
     switch (ev.key) {
       case 'ArrowRight': case 'PageDown': case ' ':
         ev.preventDefault(); go(current + 1); break;
@@ -64,9 +72,17 @@
   document.querySelectorAll('[data-preset]').forEach((btn) =>
     btn.addEventListener('click', () => { input.value = btn.dataset.preset; input.focus(); }));
 
+  const show = (text) => { // append mantendo o fim visível (max-height + overflow)
+    out.textContent += text;
+    out.scrollTop = out.scrollHeight;
+  };
+
+  let running = false; // re-entrância: duplo-Enter embaralharia dois streams
   async function run() {
     const prompt = input.value.trim();
-    if (!prompt) return;
+    if (!prompt || running) return;
+    running = true;
+    send.disabled = true;
     out.dataset.state = 'running';
     out.textContent = '… na pista';
     prov.textContent = '—';
@@ -75,6 +91,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }),
+        signal: AbortSignal.timeout(25000), // abaixo do timeout de 30s do servidor
       });
       if (res.status === 403) {
         const body = await res.json();
@@ -91,7 +108,7 @@
       for (;;) {
         const { done, value } = await reader.read();
         if (done) return;
-        buf += dec.decode(value, { stream: true });
+        buf += dec.decode(value, { stream: true }).replace(/\r\n/g, '\n');
         let nl;
         while ((nl = buf.indexOf('\n\n')) >= 0) {
           const line = buf.slice(0, nl).trim();
@@ -99,19 +116,30 @@
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6);
           if (data === '[DONE]') return;
-          const p = JSON.parse(data);
+          let p;
+          try { p = JSON.parse(data); } catch { continue; } // evento malformado ≠ queda de conexão
           if (p.error) {
             out.dataset.state = 'error';
-            out.textContent += `\n[erro] ${p.error}`;
+            show(`\n[erro] ${p.error}`);
             return;
           }
           if (p.provider) prov.textContent = p.provider;
-          out.textContent += p.content || '';
+          show(p.content || '');
         }
       }
     } catch (err) {
-      out.dataset.state = 'error';
-      out.textContent = `sem conexão com o gateway — ${err.message}`;
+      const timedOut = err.name === 'TimeoutError' || err.name === 'AbortError';
+      if (out.dataset.state === 'ok' && out.textContent) {
+        show(`\n[stream interrompido — ${timedOut ? 'timeout' : err.message}]`);
+      } else {
+        out.dataset.state = 'error';
+        out.textContent = timedOut
+          ? 'tempo esgotado — o gateway não respondeu'
+          : `sem conexão com o gateway — ${err.message}`;
+      }
+    } finally {
+      running = false;
+      send.disabled = false;
     }
   }
   send.addEventListener('click', run);

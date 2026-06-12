@@ -84,6 +84,24 @@ func TestApresentacao_served(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "Smart LLM Gateway") {
 		t.Fatal("body does not contain presentation title")
 	}
+
+	// os assets também precisam estar embedados — um typo de nome serviria
+	// a página sem estilo/JS com o teste do index ainda verde.
+	assets := map[string]string{
+		"/apresentacao/deck.css": "text/css",
+		"/apresentacao/deck.js":  "text/javascript",
+	}
+	for path, wantCT := range assets {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, want 200", path, w.Code)
+		}
+		if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, wantCT) {
+			t.Fatalf("GET %s Content-Type = %q, want %s", path, ct, wantCT)
+		}
+	}
 }
 
 func TestHandleOpenAICompat_streaming(t *testing.T) {
