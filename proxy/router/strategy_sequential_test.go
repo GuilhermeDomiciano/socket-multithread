@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/domiciano/llm-proxy/provider"
 	"github.com/domiciano/llm-proxy/router"
@@ -37,5 +38,20 @@ func TestSequentialAll_continues_past_failure(t *testing.T) {
 	}
 	if !sink.has("done", "good") {
 		t.Errorf("não pode parar no primeiro erro — esperava done para good, got %v", sink.typesList())
+	}
+}
+
+func TestSequentialAll_call_timeout_bounds_stuck_provider(t *testing.T) {
+	old := router.CallTimeout
+	router.CallTimeout = 40 * time.Millisecond
+	defer func() { router.CallTimeout = old }()
+
+	stuck := &provider.MockProvider{MockName: "stuck", Delay: 5 * time.Second, Chunks: []string{"x"}}
+	start := time.Now()
+	out := router.SequentialAll(context.Background(), []provider.Provider{stuck}, provider.Request{}, nil)
+	for range out {
+	}
+	if elapsed := time.Since(start); elapsed > 1*time.Second {
+		t.Errorf("CallTimeout not applied — stuck provider froze for %v", elapsed)
 	}
 }

@@ -17,11 +17,12 @@ func SequentialAll(ctx context.Context, providers []provider.Provider, req provi
 	go func() {
 		defer close(out)
 		for _, p := range providers {
+			cctx, cancel := callCtx(ctx)
 			ch := make(chan provider.Chunk, 64)
 			emit(sink, event.Event{Type: "provider_start", Provider: p.Name()})
 
 			go func() {
-				p.Stream(ctx, req, ch) //nolint:errcheck
+				p.Stream(cctx, req, ch) //nolint:errcheck
 			}()
 
 			for c := range ch {
@@ -36,6 +37,7 @@ func SequentialAll(ctx context.Context, providers []provider.Provider, req provi
 				}
 				out <- c
 			}
+			cancel() // release the per-call context once this provider's stream drains
 		}
 	}()
 

@@ -31,7 +31,7 @@ func Fastest(ctx context.Context, providers []provider.Provider, req provider.Re
 
 		for i, p := range providers {
 			i, p := i, p
-			pCtx, cancel := context.WithCancel(ctx)
+			pCtx, cancel := callCtx(ctx)
 			cancels[i] = cancel
 			ch := make(chan provider.Chunk, 64)
 

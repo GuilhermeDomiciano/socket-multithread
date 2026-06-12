@@ -38,6 +38,11 @@ func main() {
 	port := getEnv("PROXY_PORT", "8080")
 	timeoutMs, _ := strconv.Atoi(getEnv("PROXY_TIMEOUT_MS", "5000"))
 
+	// Bound each provider call so a stuck/rate-limited backend (e.g. a Gemini
+	// free-tier 429) fails fast instead of freezing a race or the benchmark.
+	// Set once here, before serving, so the router reads it race-free.
+	router.CallTimeout = time.Duration(timeoutMs) * time.Millisecond
+
 	gateway := &pipeline.Gateway{
 		Input:  guardrail.Chain{guardrail.NewInjectionGuard(), guardrail.NewPIIGuard()},
 		Output: guardrail.NewPIIGuard(),

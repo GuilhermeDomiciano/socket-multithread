@@ -21,16 +21,18 @@ func ParallelAll(ctx context.Context, providers []provider.Provider, req provide
 
 		for _, p := range providers {
 			p := p
+			cctx, cancel := callCtx(ctx)
 			ch := make(chan provider.Chunk, 64)
 			emit(sink, event.Event{Type: "provider_start", Provider: p.Name()})
 
 			go func() {
-				p.Stream(ctx, req, ch) //nolint:errcheck
+				p.Stream(cctx, req, ch) //nolint:errcheck
 			}()
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+				defer cancel() // release the per-call context once the stream drains
 				for c := range ch {
 					if c.Err != nil {
 						emit(sink, event.Event{Type: "failed", Provider: p.Name(), Detail: c.Err.Error()})

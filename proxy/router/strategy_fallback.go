@@ -20,7 +20,7 @@ func Fallback(ctx context.Context, providers []provider.Provider, req provider.R
 		defer close(out)
 		var errs []error
 		for _, p := range providers {
-			pCtx, cancel := context.WithCancel(ctx)
+			pCtx, cancel := callCtx(ctx)
 			ch := make(chan provider.Chunk, 64)
 			emit(sink, event.Event{Type: "provider_start", Provider: p.Name()})
 			go func() {
