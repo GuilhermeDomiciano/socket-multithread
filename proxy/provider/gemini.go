@@ -17,18 +17,22 @@ type Gemini struct {
 	BaseURL string
 }
 
-// geminiPrices is a rough USD/1k-token table for the "cheapest" strategy.
-// Unknown models fall back to the gemini-2.5-flash rate.
+// geminiPrices is USD per 1k INPUT tokens for the "cheapest" strategy. Rates
+// current as of 2026-06 (see ai.google.dev/gemini-api/docs/pricing). Flash and
+// Flash-Lite still have a free tier; Pro is paid-only. Unknown models fall back
+// to the gemini-2.5-flash rate. (Gemini 2.0 was shut down 2026-06-01.)
 var geminiPrices = map[string]float64{
-	"gemini-2.5-flash": 0.00015,
-	"gemini-2.5-pro":   0.00125,
-	"gemini-2.0-flash": 0.0001,
-	"gemini-1.5-flash": 0.000075,
-	"gemini-1.5-pro":   0.00125,
+	"gemini-3.5-flash":       0.0015,
+	"gemini-3.1-pro-preview": 0.002,
+	"gemini-3-flash-preview": 0.0005,
+	"gemini-3.1-flash-lite":  0.00025,
+	"gemini-2.5-pro":         0.00125,
+	"gemini-2.5-flash":       0.0003,
+	"gemini-2.5-flash-lite":  0.0001,
 }
 
 // NewGemini builds a Gemini racer for a specific model. An empty model defaults
-// to gemini-2.5-flash (gemini-2.0-flash has zero free-tier quota on some projects).
+// to gemini-2.5-flash (fast, free-tier eligible).
 func NewGemini(apiKey, model string) *Gemini {
 	if model == "" {
 		model = "gemini-2.5-flash"
@@ -41,7 +45,7 @@ func (g *Gemini) CostPer1kTokens() float64 {
 	if c, ok := geminiPrices[g.Model]; ok {
 		return c
 	}
-	return 0.00015
+	return 0.0003
 }
 
 type geminiReq struct {

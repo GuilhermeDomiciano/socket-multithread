@@ -16,22 +16,23 @@ type OpenAI struct {
 	BaseURL string
 }
 
-// openAIPrices is a rough USD/1k-token table so the "cheapest" strategy can tell
-// models of the same provider apart. Unknown models fall back to the gpt-4o rate.
+// openAIPrices is USD per 1k INPUT tokens so the "cheapest" strategy can tell
+// models of the same provider apart. Rates current as of 2026-06 (see
+// developers.openai.com/api/docs/pricing). Unknown models fall back to gpt-5.4.
 var openAIPrices = map[string]float64{
-	"gpt-4o":       0.005,
-	"gpt-4o-mini":  0.0006,
-	"gpt-4.1":      0.002,
-	"gpt-4.1-mini": 0.0004,
-	"o1":           0.015,
-	"o1-mini":      0.003,
+	"gpt-5.5":      0.005,
+	"gpt-5.5-pro":  0.030,
+	"gpt-5.4":      0.0025,
+	"gpt-5.4-mini": 0.00075,
+	"gpt-5.4-nano": 0.0002,
+	"gpt-4.1-nano": 0.0001, // legacy budget model, still available
 }
 
 // NewOpenAI builds an OpenAI racer for a specific model. An empty model defaults
-// to gpt-4o.
+// to gpt-5.4-mini (fast + cheap current production model).
 func NewOpenAI(apiKey, model string) *OpenAI {
 	if model == "" {
-		model = "gpt-4o"
+		model = "gpt-5.4-mini"
 	}
 	return &OpenAI{APIKey: apiKey, Model: model, BaseURL: "https://api.openai.com"}
 }
@@ -43,7 +44,7 @@ func (o *OpenAI) CostPer1kTokens() float64 {
 	if c, ok := openAIPrices[o.Model]; ok {
 		return c
 	}
-	return 0.005
+	return 0.0025
 }
 
 type openAIReq struct {
