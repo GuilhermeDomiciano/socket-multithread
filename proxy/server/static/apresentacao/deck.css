@@ -122,6 +122,8 @@ code {
 .hud-keys { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
 
 /* ======================== GRID OVERLAY ======================== */
+/* o display:grid abaixo venceria o display:none do atributo hidden */
+#grid-overlay[hidden] { display: none; }
 #grid-overlay {
   position: fixed; inset: 0; z-index: 100;
   background: color-mix(in srgb, var(--asphalt) 80%, transparent);
