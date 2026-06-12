@@ -35,19 +35,19 @@
     <nav>
       <a href="#lap-1"><b>01</b> Capa</a>
       <a href="#lap-2"><b>02</b> Motivação</a>
-      <a href="#lap-3"><b>03</b> Visão geral</a>
-      <a href="#lap-4"><b>04</b> Backend em camadas</a>
-      <a href="#lap-5"><b>05</b> A peça central</a>
-      <a href="#lap-6"><b>06</b> Pipeline do gateway</a>
-      <a href="#lap-7"><b>07</b> Fastest ⚡</a>
-      <a href="#lap-8"><b>08</b> Roteamento</a>
-      <a href="#lap-9"><b>09</b> Teoria → projeto</a>
-      <a href="#lap-10"><b>10</b> Benchmark</a>
-      <a href="#lap-11"><b>11</b> Segurança · pit stop</a>
-      <a href="#lap-12"><b>12</b> Observabilidade</a>
-      <a href="#lap-13"><b>13</b> Concorrência correta</a>
-      <a href="#lap-14"><b>14</b> Casos de uso I</a>
-      <a href="#lap-15"><b>15</b> Casos de uso II</a>
+      <a href="#lap-3"><b>03</b> Casos de uso I</a>
+      <a href="#lap-4"><b>04</b> Casos de uso II</a>
+      <a href="#lap-5"><b>05</b> Visão geral</a>
+      <a href="#lap-6"><b>06</b> Backend em camadas</a>
+      <a href="#lap-7"><b>07</b> A peça central</a>
+      <a href="#lap-8"><b>08</b> Pipeline do gateway</a>
+      <a href="#lap-9"><b>09</b> Fastest ⚡</a>
+      <a href="#lap-10"><b>10</b> Roteamento</a>
+      <a href="#lap-11"><b>11</b> Teoria → projeto</a>
+      <a href="#lap-12"><b>12</b> Benchmark</a>
+      <a href="#lap-13"><b>13</b> Segurança · pit stop</a>
+      <a href="#lap-14"><b>14</b> Observabilidade</a>
+      <a href="#lap-15"><b>15</b> Concorrência correta</a>
       <a href="#lap-16"><b>16</b> Demo ao vivo 🏁</a>
     </nav>
   </div>
@@ -98,9 +98,60 @@
   </div>
 </section>
 
-<!-- ======================= LAP 03 · VISÃO GERAL ======================= -->
-<section class="lap" id="lap-3" data-title="Visão geral">
+<!-- ======================= LAP 03 · CASOS DE USO I ======================= -->
+<section class="lap" id="lap-3" data-title="Casos de uso I">
   <span class="ghost" aria-hidden="true">03</span>
+  <div class="wrap">
+    <p class="kicker rv">CASOS DE USO REAIS</p>
+    <h2 class="rv" style="--i:1">Onde um gateway desses<br>ganha o dia</h2>
+    <div class="cards cards--4">
+      <article class="card rv" style="--i:2">
+        <h3>Latência menor</h3>
+        <p>A corrida fastest entrega a 1ª resposta. Útil em chat e autocomplete onde cada 100ms conta.</p>
+      </article>
+      <article class="card rv" style="--i:3">
+        <h3>Alta disponibilidade</h3>
+        <p>Um provedor caiu? O fastest re-roteia ao vivo; o fallback tenta o próximo. Sem ponto único de falha.</p>
+      </article>
+      <article class="card rv" style="--i:4">
+        <h3>Otimização de custo</h3>
+        <p>cheapest manda o tráfego simples ao modelo barato e reserva o caro só para o que exige.</p>
+      </article>
+      <article class="card rv" style="--i:5">
+        <h3>Conformidade / LGPD</h3>
+        <p>PII mascarada antes de sair — CPF e e-mail nunca chegam à API externa. Auditável.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LAP 04 · CASOS DE USO II ======================= -->
+<section class="lap" id="lap-4" data-title="Casos de uso II">
+  <span class="ghost" aria-hidden="true">04</span>
+  <div class="wrap">
+    <p class="kicker rv">CASOS DE USO REAIS</p>
+    <h2 class="rv" style="--i:1">…e mais três que<br>aparecem na prática</h2>
+    <div class="cards cards--3">
+      <article class="card rv" style="--i:2">
+        <h3>Defesa contra prompt injection</h3>
+        <p>Tentativas de “ignore previous instructions” são bloqueadas na borda, antes de gastar tokens.</p>
+      </article>
+      <article class="card rv" style="--i:3">
+        <h3>Troca de provedor sem dor</h3>
+        <p>Endpoint <code>/v1/chat/completions</code> é compatível com SDKs OpenAI: troca o backend sem mexer no cliente.</p>
+      </article>
+      <article class="card rv" style="--i:4">
+        <h3>A/B e avaliação de modelos</h3>
+        <p>Rode o mesmo prompt em vários modelos lado a lado (<code>parallel-all</code>) e compare custo, latência e qualidade.</p>
+      </article>
+    </div>
+    <p class="takeaway rv" style="--i:5">Comum a todos: o cliente vê <strong>um único endpoint estável</strong> — a complexidade (paralelismo, custo, segurança) fica no gateway.</p>
+  </div>
+</section>
+
+<!-- ======================= LAP 05 · VISÃO GERAL ======================= -->
+<section class="lap" id="lap-5" data-title="Visão geral">
+  <span class="ghost" aria-hidden="true">05</span>
   <div class="wrap">
     <p class="kicker rv">VISÃO GERAL</p>
     <h2 class="rv" style="--i:1">Um prompt entra,<br>vários provedores correm</h2>
@@ -130,9 +181,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 04 · CAMADAS ======================= -->
-<section class="lap" id="lap-4" data-title="Backend em camadas">
-  <span class="ghost" aria-hidden="true">04</span>
+<!-- ======================= LAP 06 · CAMADAS ======================= -->
+<section class="lap" id="lap-6" data-title="Backend em camadas">
+  <span class="ghost" aria-hidden="true">06</span>
   <div class="wrap">
     <p class="kicker rv">BACKEND — VISÃO DE CAMADAS</p>
     <h2 class="rv" style="--i:1">O caminho de uma requisição</h2>
@@ -172,9 +223,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 05 · A PEÇA CENTRAL ======================= -->
-<section class="lap" id="lap-5" data-title="A peça central">
-  <span class="ghost" aria-hidden="true">05</span>
+<!-- ======================= LAP 07 · A PEÇA CENTRAL ======================= -->
+<section class="lap" id="lap-7" data-title="A peça central">
+  <span class="ghost" aria-hidden="true">07</span>
   <div class="wrap">
     <p class="kicker rv">A PEÇA CENTRAL</p>
     <h2 class="rv" style="--i:1">Provider, Chunk e o contrato do canal</h2>
@@ -208,9 +259,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 06 · PIPELINE ======================= -->
-<section class="lap" id="lap-6" data-title="Pipeline do gateway">
-  <span class="ghost" aria-hidden="true">06</span>
+<!-- ======================= LAP 08 · PIPELINE ======================= -->
+<section class="lap" id="lap-8" data-title="Pipeline do gateway">
+  <span class="ghost" aria-hidden="true">08</span>
   <div class="wrap">
     <p class="kicker rv">PIPELINE DO GATEWAY</p>
     <h2 class="rv" style="--i:1">Quatro estágios entre<br>o cliente e o LLM</h2>
@@ -238,9 +289,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 07 · FASTEST ======================= -->
-<section class="lap lap--hot" id="lap-7" data-title="Fastest ⚡">
-  <span class="ghost" aria-hidden="true">07</span>
+<!-- ======================= LAP 09 · FASTEST ======================= -->
+<section class="lap lap--hot" id="lap-9" data-title="Fastest ⚡">
+  <span class="ghost" aria-hidden="true">09</span>
   <div class="wrap">
     <p class="kicker rv">ESTRATÉGIA FASTEST — O DESTAQUE PARALELO ⚡</p>
     <h2 class="rv" style="--i:1">Fan-out, primeira resposta vence,<br>cancela os perdedores</h2>
@@ -283,9 +334,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 08 · ROTEAMENTO ======================= -->
-<section class="lap" id="lap-8" data-title="Roteamento">
-  <span class="ghost" aria-hidden="true">08</span>
+<!-- ======================= LAP 10 · ROTEAMENTO ======================= -->
+<section class="lap" id="lap-10" data-title="Roteamento">
+  <span class="ghost" aria-hidden="true">10</span>
   <div class="wrap">
     <p class="kicker rv">ROTEAMENTO</p>
     <h2 class="rv" style="--i:1">Cinco estratégias sobre o mesmo<br>conjunto de provedores</h2>
@@ -325,9 +376,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 09 · TEORIA → PROJETO ======================= -->
-<section class="lap" id="lap-9" data-title="Teoria → projeto">
-  <span class="ghost" aria-hidden="true">09</span>
+<!-- ======================= LAP 11 · TEORIA → PROJETO ======================= -->
+<section class="lap" id="lap-11" data-title="Teoria → projeto">
+  <span class="ghost" aria-hidden="true">11</span>
   <div class="wrap">
     <p class="kicker rv">TEORIA → PROJETO</p>
     <h2 class="rv" style="--i:1">Padrões clássicos de concorrência,<br>mapeados ao código</h2>
@@ -356,9 +407,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 10 · BENCHMARK ======================= -->
-<section class="lap" id="lap-10" data-title="Benchmark">
-  <span class="ghost" aria-hidden="true">10</span>
+<!-- ======================= LAP 12 · BENCHMARK ======================= -->
+<section class="lap" id="lap-12" data-title="Benchmark">
+  <span class="ghost" aria-hidden="true">12</span>
   <div class="wrap">
     <p class="kicker rv">PROVANDO O GANHO</p>
     <h2 class="rv" style="--i:1">Benchmark: sequencial <em>vs.</em> paralelo</h2>
@@ -397,9 +448,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 11 · SEGURANÇA + WIDGET ======================= -->
-<section class="lap" id="lap-11" data-title="Segurança · pit stop">
-  <span class="ghost" aria-hidden="true">11</span>
+<!-- ======================= LAP 13 · SEGURANÇA + WIDGET ======================= -->
+<section class="lap" id="lap-13" data-title="Segurança · pit stop">
+  <span class="ghost" aria-hidden="true">13</span>
   <div class="wrap">
     <p class="kicker rv">SEGURANÇA</p>
     <h2 class="rv" style="--i:1">Guardrails bidirecionais:<br>entrada e saída</h2>
@@ -444,9 +495,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 12 · OBSERVABILIDADE ======================= -->
-<section class="lap" id="lap-12" data-title="Observabilidade">
-  <span class="ghost" aria-hidden="true">12</span>
+<!-- ======================= LAP 14 · OBSERVABILIDADE ======================= -->
+<section class="lap" id="lap-14" data-title="Observabilidade">
+  <span class="ghost" aria-hidden="true">14</span>
   <div class="wrap">
     <p class="kicker rv">OBSERVABILIDADE</p>
     <h2 class="rv" style="--i:1">Telemetria que não muda<br>o comportamento</h2>
@@ -467,9 +518,9 @@
   </div>
 </section>
 
-<!-- ======================= LAP 13 · CONCORRÊNCIA CORRETA ======================= -->
-<section class="lap" id="lap-13" data-title="Concorrência correta">
-  <span class="ghost" aria-hidden="true">13</span>
+<!-- ======================= LAP 15 · CONCORRÊNCIA CORRETA ======================= -->
+<section class="lap" id="lap-15" data-title="Concorrência correta">
+  <span class="ghost" aria-hidden="true">15</span>
   <div class="wrap">
     <p class="kicker rv">CONCORRÊNCIA CORRETA</p>
     <h2 class="rv" style="--i:1">Invariantes que mantemos —<br>e o erro que evitamos</h2>
@@ -491,57 +542,6 @@ Previous write at 0x00c0000b4030 by goroutine 7 …</span></pre>
         <p class="term-foot">O detector <code>-race</code> pega isto. O proxy real não tem o problema porque comunica por <strong>channels/select</strong> em vez de compartilhar memória — CSP.</p>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- ======================= LAP 14 · CASOS DE USO I ======================= -->
-<section class="lap" id="lap-14" data-title="Casos de uso I">
-  <span class="ghost" aria-hidden="true">14</span>
-  <div class="wrap">
-    <p class="kicker rv">CASOS DE USO REAIS</p>
-    <h2 class="rv" style="--i:1">Onde um gateway desses<br>ganha o dia</h2>
-    <div class="cards cards--4">
-      <article class="card rv" style="--i:2">
-        <h3>Latência menor</h3>
-        <p>A corrida fastest entrega a 1ª resposta. Útil em chat e autocomplete onde cada 100ms conta.</p>
-      </article>
-      <article class="card rv" style="--i:3">
-        <h3>Alta disponibilidade</h3>
-        <p>Um provedor caiu? O fastest re-roteia ao vivo; o fallback tenta o próximo. Sem ponto único de falha.</p>
-      </article>
-      <article class="card rv" style="--i:4">
-        <h3>Otimização de custo</h3>
-        <p>cheapest manda o tráfego simples ao modelo barato e reserva o caro só para o que exige.</p>
-      </article>
-      <article class="card rv" style="--i:5">
-        <h3>Conformidade / LGPD</h3>
-        <p>PII mascarada antes de sair — CPF e e-mail nunca chegam à API externa. Auditável.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ======================= LAP 15 · CASOS DE USO II ======================= -->
-<section class="lap" id="lap-15" data-title="Casos de uso II">
-  <span class="ghost" aria-hidden="true">15</span>
-  <div class="wrap">
-    <p class="kicker rv">CASOS DE USO REAIS</p>
-    <h2 class="rv" style="--i:1">…e mais três que<br>aparecem na prática</h2>
-    <div class="cards cards--3">
-      <article class="card rv" style="--i:2">
-        <h3>Defesa contra prompt injection</h3>
-        <p>Tentativas de “ignore previous instructions” são bloqueadas na borda, antes de gastar tokens.</p>
-      </article>
-      <article class="card rv" style="--i:3">
-        <h3>Troca de provedor sem dor</h3>
-        <p>Endpoint <code>/v1/chat/completions</code> é compatível com SDKs OpenAI: troca o backend sem mexer no cliente.</p>
-      </article>
-      <article class="card rv" style="--i:4">
-        <h3>A/B e avaliação de modelos</h3>
-        <p>Rode o mesmo prompt em vários modelos lado a lado (<code>parallel-all</code>) e compare custo, latência e qualidade.</p>
-      </article>
-    </div>
-    <p class="takeaway rv" style="--i:5">Comum a todos: o cliente vê <strong>um único endpoint estável</strong> — a complexidade (paralelismo, custo, segurança) fica no gateway.</p>
   </div>
 </section>
 
