@@ -3,7 +3,7 @@
    SSE consumer for /viz/stream + start-light launch + sabotage.
 
    HARD RULES (see task brief):
-   - Every server string reaches the DOM only via textContent or esc().
+   - Every server string reaches the DOM only via textContent.
      Never innerHTML with interpolated server data.
    - GSAP and confetti are OPTIONAL. Guard every use; pure-CSS fallback
      must keep the dashboard fully functional with no CDN.
@@ -13,18 +13,9 @@
 
 let strategy = "auto";
 let eventCount = 0;
-const lanes = {}; // provider name -> { el, trail, car, badge, telem, chunks, done }
+const lanes = {}; // provider name -> { el, trail, car, badge, telem, chunks }
 
 const $ = (id) => document.getElementById(id);
-
-/* esc() escapes server strings for the (rare) cases we build markup.
-   We still prefer textContent everywhere we can. */
-function esc(s) {
-  return String(s == null ? "" : s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
 
 /* ---------- strategy pills ---------- */
 $("pills").addEventListener("click", (ev) => {
@@ -71,6 +62,10 @@ function startLights() {
 
 async function startRun() {
   if (runBtn.disabled) return;
+  // Reflect GSAP availability on the root so CSS only owns the car width
+  // transition in the no-GSAP fallback (avoids double-easing). Evaluated
+  // here, after defer'd CDN scripts have loaded.
+  document.documentElement.classList.toggle("has-gsap", !!window.gsap);
   resetUI();
   runBtn.disabled = true;
   document.body.classList.add("racing");
@@ -180,7 +175,6 @@ function ensureLane(name) {
     badge: wrap.querySelector(".lane-badge"),
     telem: wrap.querySelector(".telemetry"),
     chunks: 0,
-    done: false,
     t0: performance.now(),
   };
 
@@ -320,7 +314,7 @@ function handle(e) {
     }
     case "won": {
       const lane = ensureLane(e.provider);
-      lane.el.classList.remove("running", "cancelled", "failed", "dnf");
+      lane.el.classList.remove("running", "cancelled", "failed");
       lane.el.classList.add("won");
       lane.badge.textContent = "WON 🏁";
       moveCar(lane, 100);
@@ -353,7 +347,6 @@ function handle(e) {
     }
     case "done": {
       const lane = ensureLane(e.provider);
-      lane.done = true;
       moveCar(lane, 100);
       if (!lane.el.classList.contains("won") &&
           !lane.el.classList.contains("failed") &&

@@ -288,9 +288,11 @@ main { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 24px); max
 .car {
   position: absolute; top: 50%; left: 0; width: 0%;
   transform: translateY(-50%);
-  transition: width .25s ease; /* CSS fallback when gsap absent */
   pointer-events: none;
 }
+/* CSS owns the width easing only when GSAP is absent; otherwise GSAP
+   animates width and the two easings would compound. */
+html:not(.has-gsap) .car { transition: width .25s ease; }
 .car-glyph {
   position: absolute; right: -4px; top: 50%; transform: translateY(-50%);
   font-size: 26px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
@@ -333,13 +335,12 @@ main { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 24px); max
 }
 .lane.cancelled .lane-badge { background: var(--kerb); color: var(--ink-faint); }
 
-.lane.failed, .lane.dnf {
+.lane.failed {
   --accent: var(--red);
   border-color: rgba(226,53,53,.6);
   box-shadow: 0 0 22px rgba(226,53,53,.18);
 }
-.lane.failed .lane-badge, .lane.dnf .lane-badge { background: rgba(226,53,53,.2); color: #ff8a8a; }
-.lane.failed .car-glyph, .lane.dnf .car-glyph { content: ""; }
+.lane.failed .lane-badge { background: rgba(226,53,53,.2); color: #ff8a8a; }
 .lane.done:not(.won) { --accent: var(--ink-dim); }
 
 /* ---------- 4. ANSWER PANEL ---------- */
